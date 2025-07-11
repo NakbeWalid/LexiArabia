@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "928571153651",
+    "project_id": "dualingocoran",
+    "storage_bucket": "dualingocoran.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928571153651:android:391623d3c9d8b9bdc0ab86",
+        "android_client_info": {
+          "package_name": "com.example.dualingocoran"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAWxDA_PcTNoDyae1QS6pKXIwsoyi4FZR0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
