@@ -1,7 +1,10 @@
+import 'package:dualingocoran/widgets/lesson_bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Fichier généré par `flutterfire configure`
+import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:dualingocoran/Exercises/ExercisePage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,7 +64,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
   static final List<Widget> _screens = [
-    RoadmapScreen(),
+    RoadmapBubbleScreen(),
     ExercisesScreen(),
     // à _screens
     Center(child: Text('Progression', style: TextStyle(fontSize: 24))),
@@ -189,141 +192,88 @@ class RoadmapScreen extends StatelessWidget {
   }
 }
 
-class ExercisesScreen extends StatefulWidget {
-  const ExercisesScreen({super.key});
+class RoadmapBubbleScreen extends StatelessWidget {
+  final List<Map<String, dynamic>> lessons = [
+    {'title': 'Alphabet', 'icon': Icons.abc, 'completed': true},
+    {'title': 'Reading', 'icon': Icons.menu_book, 'completed': false},
+    {
+      'title': 'Pronunciation',
+      'icon': Icons.record_voice_over,
+      'completed': false,
+    },
+    {'title': 'Tajwid', 'icon': Icons.auto_stories, 'completed': false},
+    {'title': 'Vocabulary', 'icon': Icons.translate, 'completed': false},
+  ];
 
-  @override
-  State<ExercisesScreen> createState() => _ExercisesScreenState();
-}
-
-class _ExercisesScreenState extends State<ExercisesScreen> {
-  int currentIndex = 0;
-  List<DocumentSnapshot> exercises = [];
-  bool isLoading = true;
-  String? selectedOption;
-  bool showFeedback = false;
-
-  @override
-  void initState() {
-    super.initState();
-    loadExercises();
-    print("salut123");
-  }
-
-  Future<void> loadExercises() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('exercises')
-        .get();
-    setState(() {
-      exercises = snapshot.docs;
-
-      isLoading = false;
-    });
-  }
-
-  void checkAnswer(String selected) {
-    setState(() {
-      selectedOption = selected;
-      showFeedback = true;
-    });
-  }
-
-  void nextQuestion() {
-    setState(() {
-      if (currentIndex < exercises.length - 1) {
-        currentIndex++;
-        selectedOption = null;
-        showFeedback = false;
-      }
-    });
-  }
+  RoadmapBubbleScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return Scaffold(
-        appBar: AppBar(title: Text('Exercices')),
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (currentIndex >= exercises.length) {
-      return Scaffold(
-        appBar: AppBar(title: Text('Exercices terminés')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
-              SizedBox(height: 20),
-              Text(
-                'Bravo ! Tu as terminé tous les exercices.',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    currentIndex = 0;
-                    selectedOption = null;
-                    showFeedback = false;
-                  });
-                },
-                child: Text('Recommencer'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final exercise = exercises[currentIndex];
-    final question = exercise['question'];
-    final options = List<String>.from(exercise['options']);
-    final answer = exercise['correct_answer'];
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF2EFE6),
       appBar: AppBar(
-        title: Text('Exercice ${currentIndex + 1}/${exercises.length}'),
+        title: Text("Your Learning Path"),
+        centerTitle: true,
         backgroundColor: Color(0xFF2D6A4F),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              question,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 24),
-            ...options.map(
-              (option) => Card(
-                color: selectedOption == option
-                    ? (option == answer ? Colors.green : Colors.red.shade300)
-                    : null,
-                child: ListTile(
-                  title: Text(option, style: TextStyle(fontSize: 18)),
-                  onTap: selectedOption == null
-                      ? () => checkAnswer(option)
-                      : null,
-                ),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+        child: ListView.separated(
+          itemCount: lessons.length,
+          separatorBuilder: (_, __) => Center(
+            child: Container(height: 40, width: 4, color: Color(0xFF2D6A4F)),
+          ),
+          itemBuilder: (context, index) {
+            final lesson = lessons[index];
+            final isCompleted = lesson['completed'];
+            final isUnlocked = index == 0 || lessons[index - 1]['completed'];
+
+            return Center(
+              child: LessonBubble(
+                title: lesson['title'],
+                icon: lesson['icon'],
+                completed: isCompleted,
+                unlocked: isUnlocked,
+                onTap: () {
+                  if (isUnlocked) {
+                    // Naviguer vers la leçon
+                  }
+                },
               ),
-            ),
-            SizedBox(height: 30),
-            if (showFeedback)
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF2D6A4F),
-                ),
-                onPressed: nextQuestion,
-                child: Text(
-                  currentIndex < exercises.length - 1 ? 'Suivant' : 'Terminer',
-                ),
-              ),
-          ],
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+class ExercisesScreen extends StatelessWidget {
+  const ExercisesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Exercises")),
+      body: FutureBuilder<DocumentSnapshot>(
+        future: FirebaseFirestore.instance
+            .collection("exercises")
+            .limit(1)
+            .get()
+            .then((snapshot) => snapshot.docs.first),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: Text("No exercises found."));
+          }
+
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          final exercise = Exercise.fromJson(data);
+
+          return ExercisePage(exercise: exercise);
+        },
       ),
     );
   }
