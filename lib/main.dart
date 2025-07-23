@@ -5,10 +5,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Fichier généré par `flutterfire configure`
 import 'package:dualingocoran/Exercises/Exercise.dart';
 import 'package:dualingocoran/Exercises/ExercisePage.dart';
+import 'package:dualingocoran/screens/profile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  ajouterLeconFirestore();
+
   runApp(const CoranLinguaApp());
 }
 
@@ -100,102 +103,15 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-class RoadmapScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> lessons = [
-    {'title': 'Alphabet', 'icon': Icons.mosque, 'completed': true},
-    {'title': 'Lecture', 'icon': Icons.menu_book, 'completed': false},
-    {'title': 'Prononciation', 'icon': Icons.mic, 'completed': false},
-    {'title': 'Tajwid', 'icon': Icons.auto_stories, 'completed': false},
-    {'title': 'Vocabulaire', 'icon': Icons.translate, 'completed': false},
-  ];
-
-  RoadmapScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFAF3E0),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2D6A4F),
-        title: const Text('Parcours Coranique'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: ListView.builder(
-        itemCount: lessons.length,
-        padding: const EdgeInsets.all(16),
-        itemBuilder: (context, index) {
-          final lesson = lessons[index];
-          final bool isCompleted = lesson['completed'];
-
-          return Column(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  if (isCompleted ||
-                      index == 0 ||
-                      lessons[index - 1]['completed']) {
-                    // ouvrir la leçon
-                  }
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isCompleted ? const Color(0xFFE9F5EF) : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isCompleted
-                          ? const Color(0xFFD4AF37)
-                          : Colors.grey.shade300,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 5,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 20,
-                    horizontal: 16,
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(lesson['icon'], color: Color(0xFF2D6A4F), size: 32),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          lesson['title'],
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1C1C1C),
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        isCompleted ? Icons.check_circle : Icons.lock_open,
-                        color: isCompleted ? Color(0xFFD4AF37) : Colors.grey,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              if (index != lessons.length - 1)
-                Container(height: 40, width: 4, color: Color(0xFF2D6A4F)),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
 class RoadmapBubbleScreen extends StatelessWidget {
   final List<Map<String, dynamic>> lessons = [
-    {'title': 'Alphabet', 'icon': Icons.abc, 'completed': true},
-    {'title': 'Reading', 'icon': Icons.menu_book, 'completed': false},
+    {'title': 'Alphabet', 'icon': Icons.abc, 'completed': true, 'level': 2},
+    {
+      'title': 'Reading',
+      'icon': Icons.menu_book,
+      'completed': true,
+      'level': 1,
+    },
     {
       'title': 'Pronunciation',
       'icon': Icons.record_voice_over,
@@ -205,41 +121,163 @@ class RoadmapBubbleScreen extends StatelessWidget {
     {'title': 'Vocabulary', 'icon': Icons.translate, 'completed': false},
   ];
 
+  final int streak = 5; // 🔥 jours d'affilée
+  final int lives = 3; // ❤️ vies restantes
+
   RoadmapBubbleScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF2EFE6),
-      appBar: AppBar(
-        title: Text("Your Learning Path"),
-        centerTitle: true,
-        backgroundColor: Color(0xFF2D6A4F),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          decoration: const BoxDecoration(
+            color: Color(0xFF0F2027),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0xFF0F2027),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: SafeArea(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: List.generate(
+                    3,
+                    (index) => Icon(
+                      index < lives ? Icons.favorite : Icons.favorite_border,
+                      color: Colors.red,
+                      size: 24,
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department,
+                      color: Colors.orange,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      "$streak",
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1B1B2F), Color(0xFF121212)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
         child: ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
           itemCount: lessons.length,
           separatorBuilder: (_, __) => Center(
-            child: Container(height: 40, width: 4, color: Color(0xFF2D6A4F)),
+            child: Container(height: 40, width: 3, color: Colors.grey.shade700),
           ),
+
           itemBuilder: (context, index) {
             final lesson = lessons[index];
-            final isCompleted = lesson['completed'];
-            final isUnlocked = index == 0 || lessons[index - 1]['completed'];
+            final isCompleted = lesson['completed'] == true;
+            final isUnlocked =
+                index == 0 || lessons[index - 1]['completed'] == true;
+            final level = lesson['level'];
 
-            return Center(
-              child: LessonBubble(
-                title: lesson['title'],
-                icon: lesson['icon'],
-                completed: isCompleted,
-                unlocked: isUnlocked,
-                onTap: () {
-                  if (isUnlocked) {
-                    // Naviguer vers la leçon
-                  }
-                },
-              ),
+            Color bubbleColor;
+            if (isCompleted) {
+              bubbleColor = const Color.fromARGB(255, 65, 42, 125);
+            } else if (isUnlocked) {
+              bubbleColor = const Color(0xFF2D6A4F);
+            } else {
+              bubbleColor = Colors.grey.shade800;
+            }
+
+            Widget bubble = Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: bubbleColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isUnlocked ? Colors.black : Colors.grey.shade700,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      if (isUnlocked)
+                        BoxShadow(
+                          color: bubbleColor.withOpacity(0.6),
+                          blurRadius: 12,
+                          spreadRadius: 2,
+                        ),
+                    ],
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(lesson['icon'], size: 32, color: Colors.white),
+                      if (isCompleted && level != null)
+                        Positioned(
+                          bottom: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.yellow.shade700,
+                            ),
+                            child: Text(
+                              '$level',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  lesson['title'],
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            );
+
+            // ⚠️ Positionnement zigzag
+            bool isLeft = index % 2 == 0;
+
+            return Row(
+              mainAxisAlignment: isLeft
+                  ? MainAxisAlignment.start
+                  : MainAxisAlignment.end,
+              children: [bubble],
             );
           },
         ),
@@ -248,221 +286,160 @@ class RoadmapBubbleScreen extends StatelessWidget {
   }
 }
 
-class ExercisesScreen extends StatelessWidget {
-  const ExercisesScreen({super.key});
+class _ExercisePageState extends State<ExercisePage> {
+  int currentIndex = 0;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Exercises")),
-      body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance
-            .collection("exercises")
-            .limit(1)
-            .get()
-            .then((snapshot) => snapshot.docs.first),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData) {
-            return const Center(child: Text("No exercises found."));
-          }
-
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          final exercise = Exercise.fromJson(data);
-
-          return ExercisePage(exercise: exercise);
-        },
-      ),
-    );
-  }
-}
-
-class ProfilScreen extends StatelessWidget {
-  final String userId = 'user_123';
-
-  const ProfilScreen({super.key});
-
-  Future<void> saveUserData(BuildContext context) async {
-    try {
-      await FirebaseFirestore.instance.collection('users').doc('user_123').set({
-        'name': 'Bhy',
-        'level': 3,
-        'xp': 1200,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Utilisateur enregistré dans Firebase ✅')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de l\'enregistrement ❌')),
+  void goToNextExercise() {
+    if (currentIndex < widget.exercises.length - 1) {
+      setState(() {
+        currentIndex++;
+      });
+    } else {
+      // Tous les exercices sont finis
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Well done!"),
+          content: const Text("You’ve completed all the exercises."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final String nom = 'Bhy';
-    final int niveau = 3;
-    final int xp = 1200;
-    final String avatarUrl =
-        'https://ui-avatars.com/api/?name=Bhy&background=2D6A4F&color=fff&rounded=true';
+    final currentExercise = widget.exercises[currentIndex];
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Color(0xFF2D6A4F),
-        elevation: 0,
-        title: Text('Profil', style: TextStyle(color: Colors.white)),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(height: 30),
-            CircleAvatar(
-              radius: 50,
-              backgroundImage: NetworkImage(avatarUrl),
-              backgroundColor: Colors.transparent,
-            ),
-            SizedBox(height: 20),
-            Text(
-              nom,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2D6A4F),
-              ),
-            ),
-            SizedBox(height: 10),
-            Text(
-              'Niveau $niveau',
-              style: TextStyle(fontSize: 18, color: Color(0xFF1C1C1C)),
-            ),
-            SizedBox(height: 20),
-            Text(
-              'Expérience',
-              style: TextStyle(fontSize: 18, color: Color(0xFF1C1C1C)),
-            ),
-            SizedBox(height: 10),
-            LinearProgressIndicator(
-              value: xp % 1000 / 1000,
-              backgroundColor: Colors.grey.shade300,
-              color: Color(0xFFD4AF37),
-              minHeight: 10,
-            ),
-            SizedBox(height: 10),
-            Text('$xp XP', style: TextStyle(fontSize: 16)),
-            SizedBox(height: 20),
-            SizedBox(height: 20),
-            Divider(),
-            ListTile(
-              leading: Icon(Icons.emoji_events, color: Color(0xFF2D6A4F)),
-              title: Text('Badges débloqués'),
-              trailing: Icon(Icons.chevron_right),
-              onTap: () {},
-            ),
-            ListTile(
-              leading: Icon(Icons.settings, color: Color(0xFF2D6A4F)),
-              title: Text('Paramètres du compte'),
-              trailing: Icon(Icons.chevron_right),
-              onTap: () {},
-            ),
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.red),
-              title: Text('Se déconnecter'),
-              onTap: () {},
-            ),
-            SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () => saveUserData(context),
-              icon: Icon(Icons.cloud_upload),
-              label: Text("Tester ajout dans Firebase"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF2D6A4F),
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    // Sélectionne le bon widget selon le type
+    switch (currentExercise.type) {
+      case 'multiple_choice':
+        return MultipleChoiceWidget(
+          exercise: currentExercise,
+          onNext: goToNextExercise,
+        );
+      case 'true_or_false':
+        return TrueOrFalseWidget(
+          exercise: currentExercise,
+          onNext: goToNextExercise,
+        );
+      case 'drag_and_drop':
+        return DragAndDropWidget(
+          exercise: currentExercise,
+          onNext: goToNextExercise,
+        );
+      case 'audio':
+        return AudioExerciseWidget(
+          exercise: currentExercise,
+          onNext: goToNextExercise,
+        );
+      default:
+        return const Center(child: Text("Unknown exercise type"));
+    }
   }
 }
 
-Future<void> ajouterExercices() async {
-  final firestore = FirebaseFirestore.instance;
-
-  final exercices = [
-    {
-      "question": "Quel est le sens du mot 'صلاة' ?",
-      "word": "صلاة",
-      "correct_answer": "Prière",
-      "options": ["Prière", "Jeûne", "Zakat", "Pèlerinage"],
-    },
-    {
-      "question": "Quel est le sens du mot 'صوم' ?",
-      "word": "صوم",
-      "correct_answer": "Jeûne",
-      "options": ["Prière", "Jeûne", "Lecture", "Prosternation"],
-    },
-    {
-      "question": "Quel est le sens du mot 'قرآن' ?",
-      "word": "قرآن",
-      "correct_answer": "Lecture",
-      "options": ["Lecture", "Chanson", "Discours", "Hadith"],
-    },
-    {
-      "question": "Quel est le sens du mot 'نار' ?",
-      "word": "نار",
-      "correct_answer": "Feu",
-      "options": ["Feu", "Eau", "Ciel", "Lumière"],
-    },
-    {
-      "question": "Quel est le sens du mot 'جنة' ?",
-      "word": "جنة",
-      "correct_answer": "Paradis",
-      "options": ["Paradis", "Enfer", "Tombe", "Dunya"],
-    },
-    {
-      "question": "Quel est le sens du mot 'زكاة' ?",
-      "word": "زكاة",
-      "correct_answer": "Aumône",
-      "options": ["Aumône", "Prière", "Fête", "Foi"],
-    },
-    {
-      "question": "Quel est le sens du mot 'إيمان' ?",
-      "word": "إيمان",
-      "correct_answer": "Foi",
-      "options": ["Foi", "Richesse", "Crainte", "Islam"],
-    },
-    {
-      "question": "Quel est le sens du mot 'نور' ?",
-      "word": "نور",
-      "correct_answer": "Lumière",
-      "options": ["Lumière", "Ombre", "Vent", "Terre"],
-    },
-    {
-      "question": "Quel est le sens du mot 'يوم' ?",
-      "word": "يوم",
-      "correct_answer": "Jour",
-      "options": ["Jour", "Mois", "Année", "Matin"],
-    },
-    {
-      "question": "Quel est le sens du mot 'حج' ?",
-      "word": "حج",
-      "correct_answer": "Pèlerinage",
-      "options": ["Pèlerinage", "Mariage", "Aumône", "Jeûne"],
-    },
-  ];
-
-  for (final exo in exercices) {
-    await firestore.collection('exercises').add(exo);
+Future<void> ajouterLeconFirestore() async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('lessons')
+        .doc('Demonstrative Pronouns 1') // 🔥 NOM FIXE DU DOCUMENT
+        .set({
+          "title": "Demonstrative Pronouns 1",
+          "category": "Pronouns",
+          "newWords": [
+            {"arabic": "هَذَا", "english": "this (masculine singular)"},
+            {
+              "arabic": "هَذِهِ",
+              "english": "this (feminine singular or inanimate plural)",
+            },
+            {"arabic": "هَذَانِ", "english": "these two (masculine dual)"},
+            {
+              "arabic": "هَؤُلَاءِ",
+              "english": "these (plural, masculine/feminine)",
+            },
+          ],
+          "exercises": [
+            {
+              "type": "multiple_choice",
+              "question": "What does هَذَا mean?",
+              "options": ["that", "this (masculine singular)", "those", "he"],
+              "answer": "this (masculine singular)",
+            },
+            {
+              "type": "multiple_choice",
+              "question":
+                  "Which one is the correct Arabic for 'these (plural)'?",
+              "options": ["هَذِهِ", "هَذَا", "هَؤُلَاءِ", "ذَلِكَ"],
+              "answer": "هَؤُلَاءِ",
+            },
+            {
+              "type": "true_or_false",
+              "question":
+                  "هَذِهِ refers to feminine singular or inanimate plural.",
+              "answer": true,
+            },
+            {
+              "type": "true_or_false",
+              "question": "هَذَانِ is used for three or more items.",
+              "answer": false,
+            },
+            {
+              "type": "drag_and_drop",
+              "instruction":
+                  "Match each Arabic pronoun to its English meaning.",
+              "pairs": {
+                "هَذَا": "this (masculine singular)",
+                "هَذَانِ": "these two (masculine dual)",
+                "هَذِهِ": "this (feminine singular)",
+                "هَؤُلَاءِ": "these (plural)",
+              },
+            },
+            {
+              "type": "multiple_choice",
+              "question": "Which is the dual masculine form of 'this'?",
+              "options": ["هَذَانِ", "هَذَا", "هَذِهِ", "هَؤُلَاءِ"],
+              "answer": "هَذَانِ",
+            },
+            {
+              "type": "drag_and_drop",
+              "instruction": "Match each pronoun to the correct gender/number.",
+              "pairs": {
+                "هَذَا": "masculine singular",
+                "هَذِهِ": "feminine singular",
+                "هَذَانِ": "masculine dual",
+                "هَؤُلَاءِ": "plural",
+              },
+            },
+            {
+              "type": "audio",
+              "question": "Listen and choose the correct meaning.",
+              "audioUrl": "audio/hadha.mp3",
+              "options": ["this", "that", "he", "those"],
+              "answer": "this",
+            },
+            {
+              "type": "audio",
+              "question": "Listen and identify the Arabic word.",
+              "audioUrl": "audio/hadhihi.mp3",
+              "options": ["هَذَا", "هَذِهِ", "هَذَانِ", "هَؤُلَاءِ"],
+              "answer": "هَذِهِ",
+            },
+            {
+              "type": "true_or_false",
+              "question":
+                  "هَؤُلَاءِ is used for both masculine and feminine plural.",
+              "answer": true,
+            },
+          ],
+        });
+    print("Leçon ajoutée avec succès !");
+  } catch (e) {
+    print("Erreur lors de l'ajout de la leçon : $e");
   }
-
-  print('✅ Les 10 exercices ont été ajoutés à Firestore');
 }

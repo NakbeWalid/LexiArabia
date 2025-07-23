@@ -19,7 +19,7 @@ class Exercise {
       question: json['question'],
       options: List<String>.from(json['options'] ?? []),
       answer: json['correct_answer'],
-      audioUrl: json['audio_url'],
+      audioUrl: json['audioUrl'],
     );
   }
 }

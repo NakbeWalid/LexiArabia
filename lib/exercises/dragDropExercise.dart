@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
 
 class DragDropExercise extends StatefulWidget {
@@ -13,26 +15,30 @@ class DragDropExercise extends StatefulWidget {
 class _DragDropExerciseState extends State<DragDropExercise> {
   List<String> targetList = [];
   List<String> remainingList = [];
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   @override
   void initState() {
     super.initState();
-
-    // Exemple : le mot à reconstruire est "صلاة"
     final correctWord = widget.exercise.answer!;
     targetList = List.filled(correctWord.length, "");
     remainingList = correctWord.split('')..shuffle();
   }
 
-  void handleDrop(int index, String letter) {
+  void handleDrop(int index, String letter) async {
     setState(() {
       targetList[index] = letter;
       remainingList.remove(letter);
     });
 
     if (!targetList.contains("")) {
-      // Vérifie si la réponse est correcte
       final result = targetList.join() == widget.exercise.answer;
+
+      await _audioPlayer.play(
+        AssetSource(result ? 'sounds/correct.mp3' : 'sounds/wrong.mp3'),
+      );
+      HapticFeedback.mediumImpact();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result ? "Correct ✅" : "Incorrect ❌"),
@@ -51,6 +57,12 @@ class _DragDropExerciseState extends State<DragDropExercise> {
   }
 
   @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("Drag & Drop")),
@@ -61,28 +73,18 @@ class _DragDropExerciseState extends State<DragDropExercise> {
             Text(
               widget.exercise.question,
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
             SizedBox(height: 30),
 
-            // Zone de dépôt
+            // Zones de dépôt
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(targetList.length, (index) {
                 final current = targetList[index];
                 return DragTarget<String>(
                   builder: (context, candidateData, rejectedData) {
-                    return Container(
-                      width: 50,
-                      height: 50,
-                      margin: EdgeInsets.symmetric(horizontal: 4),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.black),
-                      ),
-                      child: Text(current, style: TextStyle(fontSize: 24)),
-                    );
+                    return _letterBox(current);
                   },
                   onAccept: (letter) => handleDrop(index, letter),
                   onWillAccept: (_) => targetList[index] == "",
@@ -91,7 +93,7 @@ class _DragDropExerciseState extends State<DragDropExercise> {
             ),
             SizedBox(height: 30),
 
-            // Lettres à glisser
+            // Lettres disponibles
             Wrap(
               spacing: 10,
               children: remainingList.map((letter) {
@@ -99,14 +101,7 @@ class _DragDropExerciseState extends State<DragDropExercise> {
                   data: letter,
                   feedback: Material(
                     color: Colors.transparent,
-                    child: Text(
-                      letter,
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
-                    ),
+                    child: _letterBox(letter, isFeedback: true),
                   ),
                   childWhenDragging: Opacity(
                     opacity: 0.3,
@@ -117,6 +112,7 @@ class _DragDropExerciseState extends State<DragDropExercise> {
               }).toList(),
             ),
             SizedBox(height: 40),
+
             ElevatedButton.icon(
               onPressed: reset,
               icon: Icon(Icons.refresh),
@@ -129,19 +125,24 @@ class _DragDropExerciseState extends State<DragDropExercise> {
     );
   }
 
-  Widget _letterBox(String letter) {
+  Widget _letterBox(String letter, {bool isFeedback = false}) {
     return Container(
       width: 50,
       height: 50,
+      margin: EdgeInsets.symmetric(horizontal: 4),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isFeedback ? Colors.deepPurple.shade100 : Colors.white,
         border: Border.all(color: Colors.black),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         letter,
-        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: isFeedback ? Colors.deepPurple : Colors.black,
+        ),
       ),
     );
   }
