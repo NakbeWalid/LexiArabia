@@ -1,11 +1,113 @@
-import 'package:dualingocoran/widgets/lesson_bubble.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart'; // Fichier généré par `flutterfire configure`
 import 'package:dualingocoran/Exercises/Exercise.dart';
-import 'package:dualingocoran/Exercises/ExercisePage.dart';
+import 'package:dualingocoran/Exercises/exercise_page.dart';
 import 'package:dualingocoran/screens/profile_screen.dart';
+
+Future<void> ajouterLeconFirestore() async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('lessons')
+        .doc('Relative Pronouns') // 🔥 NOM FIXE DU DOCUMENT
+        .set({
+          "title": "Relative Pronouns – Who, Which, That",
+          "description":
+              "Learn how to use Arabic relative pronouns: الَّذِي, الَّتِي, الَّذِينَ, الَّلَائِي.",
+          "words": ["الَّذِي", "الَّتِي", "الَّذِينَ", "اللَّائِي"],
+          "exercises": [
+            {
+              "type": "multiple_choice",
+              "question":
+                  "Which relative pronoun is used for: 'The man **who** prays'?",
+              "options": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
+              "answer": "الَّذِي",
+            },
+            {
+              "type": "multiple_choice",
+              "question":
+                  "You want to say: 'The woman **who** reads.' What do you use?",
+              "options": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+              "answer": "الَّتِي",
+            },
+            {
+              "type": "multiple_choice",
+              "question":
+                  "Pick the correct pronoun: 'Those (men) who believe are successful.'",
+              "options": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
+              "answer": "الَّذِينَ",
+            },
+            {
+              "type": "multiple_choice",
+              "question": "Which one is used for groups of women?",
+              "options": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
+              "answer": "اللَّائِي",
+            },
+            {
+              "type": "drag_drop",
+              "question":
+                  "Match the Arabic relative pronoun to its correct use.",
+              "options": [
+                "الَّذِي",
+                "الَّتِي",
+                "الَّذِينَ",
+                "اللَّائِي",
+                "who (masculine)",
+                "who (feminine)",
+                "those who (masc.)",
+                "those who (fem.)",
+              ],
+              "answer": [
+                {"from": "الَّذِي", "to": "who (masculine)"},
+                {"from": "الَّتِي", "to": "who (feminine)"},
+                {"from": "الَّذِينَ", "to": "those who (masc.)"},
+                {"from": "اللَّائِي", "to": "those who (fem.)"},
+              ],
+            },
+            {
+              "type": "true_false",
+              "question": "“اللَّائِي” can be used for a group of men.",
+              "answer": "false",
+            },
+            {
+              "type": "true_false",
+              "question": "“الَّتِي” is used for singular feminine nouns.",
+              "answer": "true",
+            },
+            {
+              "type": "audio_choice",
+              "question": "Which pronoun do you hear?",
+              "audioUrl": "https://example.com/audio/allathi.mp3",
+              "options": ["الَّتِي", "الَّذِي", "الَّذِينَ"],
+              "answer": "الَّذِي",
+            },
+            {
+              "type": "audio_choice",
+              "question": "Listen and choose: what do you hear?",
+              "audioUrl": "https://example.com/audio/allatheena.mp3",
+              "options": ["اللَّائِي", "الَّذِينَ", "الَّتِي"],
+              "answer": "الَّذِينَ",
+            },
+            {
+              "type": "multiple_choice",
+              "question":
+                  "Choose the correct full phrase: 'The students **who** study succeed.'",
+              "options": [
+                "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
+                "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+                "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
+                "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
+              ],
+              "answer": "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+            },
+          ],
+        });
+    print("Leçon ajoutée avec succès !");
+  } catch (e) {
+    print("Erreur lors de l'ajout de la leçon : $e");
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -104,23 +206,6 @@ class _MainScreenState extends State<MainScreen> {
 }
 
 class RoadmapBubbleScreen extends StatelessWidget {
-  final List<Map<String, dynamic>> lessons = [
-    {'title': 'Alphabet', 'icon': Icons.abc, 'completed': true, 'level': 2},
-    {
-      'title': 'Reading',
-      'icon': Icons.menu_book,
-      'completed': true,
-      'level': 1,
-    },
-    {
-      'title': 'Pronunciation',
-      'icon': Icons.record_voice_over,
-      'completed': false,
-    },
-    {'title': 'Tajwid', 'icon': Icons.auto_stories, 'completed': false},
-    {'title': 'Vocabulary', 'icon': Icons.translate, 'completed': false},
-  ];
-
   final int streak = 5; // 🔥 jours d'affilée
   final int lives = 3; // ❤️ vies restantes
 
@@ -188,258 +273,345 @@ class RoadmapBubbleScreen extends StatelessWidget {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-          itemCount: lessons.length,
-          separatorBuilder: (_, __) => Center(
-            child: Container(height: 40, width: 3, color: Colors.grey.shade700),
-          ),
-
-          itemBuilder: (context, index) {
-            final lesson = lessons[index];
-            final isCompleted = lesson['completed'] == true;
-            final isUnlocked =
-                index == 0 || lessons[index - 1]['completed'] == true;
-            final level = lesson['level'];
-
-            Color bubbleColor;
-            if (isCompleted) {
-              bubbleColor = const Color.fromARGB(255, 65, 42, 125);
-            } else if (isUnlocked) {
-              bubbleColor = const Color(0xFF2D6A4F);
-            } else {
-              bubbleColor = Colors.grey.shade800;
-            }
-
-            Widget bubble = Column(
+        child: Center(
+          child: SingleChildScrollView(
+            child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: bubbleColor,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isUnlocked ? Colors.black : Colors.grey.shade700,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      if (isUnlocked)
-                        BoxShadow(
-                          color: bubbleColor.withOpacity(0.6),
-                          blurRadius: 12,
-                          spreadRadius: 2,
-                        ),
-                    ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(lesson['icon'], size: 32, color: Colors.white),
-                      if (isCompleted && level != null)
-                        Positioned(
-                          bottom: -4,
-                          right: -4,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.yellow.shade700,
-                            ),
-                            child: Text(
-                              '$level',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  lesson['title'],
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                const SizedBox(height: 40),
+                _buildFirestoreZigzagRoadmap(context),
+                const SizedBox(height: 40),
               ],
-            );
-
-            // ⚠️ Positionnement zigzag
-            bool isLeft = index % 2 == 0;
-
-            return Row(
-              mainAxisAlignment: isLeft
-                  ? MainAxisAlignment.start
-                  : MainAxisAlignment.end,
-              children: [bubble],
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
   }
+
+  Widget _buildFirestoreZigzagRoadmap(BuildContext context) {
+    final double maxWidth = 280; // Réduit pour rapprocher les bulles
+    final double bubbleSize = 60; // Plus petites bulles
+    final double verticalSpacing = 20; // Espacement vertical réduit
+    final double horizontalOffset = 40; // Offset horizontal réduit
+
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance.collection('lessons').get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("Aucune leçon trouvée."));
+        }
+        final lessons = snapshot.data!.docs;
+        return SizedBox(
+          width: maxWidth,
+          child: Stack(
+            children: [
+              // CustomPaint for the luminous path
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _ZigzagPathPainter(
+                    itemCount: lessons.length,
+                    bubbleSize: bubbleSize,
+                    verticalSpacing: verticalSpacing,
+                    horizontalOffset: horizontalOffset,
+                    maxWidth: maxWidth,
+                  ),
+                ),
+              ),
+              // Bubbles
+              Column(
+                children: List.generate(lessons.length, (index) {
+                  final lessonDoc = lessons[index];
+                  final lesson = lessonDoc.data() as Map<String, dynamic>;
+                  final title = lesson['title'] ?? 'Lesson';
+                  final isCompleted =
+                      index == 0; // TODO: à remplacer par ta logique
+                  final isUnlocked =
+                      index == 0 ||
+                      (index > 0); // TODO: à remplacer par ta logique
+                  final level = lesson['level'];
+                  final isLeft = index % 2 == 0;
+                  // Icône dynamique ou par défaut
+                  final icon = index == 0
+                      ? Icons.abc
+                      : index == 1
+                      ? Icons.menu_book
+                      : Icons.school;
+
+                  Color bubbleColor;
+                  Gradient? bubbleGradient;
+                  if (isCompleted) {
+                    bubbleColor = const Color(0xFF2D6A4F);
+                    bubbleGradient = const LinearGradient(
+                      colors: [Color(0xFF43E97B), Color(0xFF38F9D7)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    );
+                  } else if (isUnlocked) {
+                    bubbleColor = const Color(0xFFD4AF37);
+                    bubbleGradient = const LinearGradient(
+                      colors: [Color(0xFFFFE259), Color(0xFFFFA751)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    );
+                  } else {
+                    bubbleColor = Colors.grey.shade700;
+                    bubbleGradient = const LinearGradient(
+                      colors: [Color(0xFF757F9A), Color(0xFFD7DDE8)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    );
+                  }
+
+                  // Récupère les exercices de la leçon
+                  final exercisesRaw =
+                      lesson['exercises'] as List<dynamic>? ?? [];
+                  final exercises = exercisesRaw
+                      .map(
+                        (ex) => Exercise.fromJson(ex as Map<String, dynamic>),
+                      )
+                      .where(
+                        (exercise) =>
+                            exercise.question.isNotEmpty &&
+                            exercise.type.isNotEmpty,
+                      )
+                      .toList();
+
+                  return Container(
+                    margin: EdgeInsets.only(
+                      top: index == 0 ? 0 : verticalSpacing,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: isLeft
+                          ? MainAxisAlignment.start
+                          : MainAxisAlignment.end,
+                      children: [
+                        Container(
+                          margin: EdgeInsets.only(
+                            left: isLeft ? horizontalOffset : 0,
+                            right: isLeft ? 0 : horizontalOffset,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              GestureDetector(
+                                onTap: isUnlocked && exercises.isNotEmpty
+                                    ? () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => ExercisePage(
+                                              exercises: exercises,
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    : null,
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  curve: Curves.easeInOut,
+                                  width: bubbleSize,
+                                  height: bubbleSize,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: bubbleGradient,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: bubbleColor.withOpacity(0.4),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                    border: Border.all(
+                                      color: isCompleted
+                                          ? Colors.greenAccent
+                                          : isUnlocked
+                                          ? const Color(0xFFD4AF37)
+                                          : Colors.grey.shade500,
+                                      width: 2.5,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: isUnlocked
+                                        ? Icon(
+                                            icon,
+                                            size: 28,
+                                            color: isCompleted
+                                                ? Colors.white
+                                                : Colors.black,
+                                          )
+                                        : const Icon(
+                                            Icons.lock,
+                                            size: 28,
+                                            color: Colors.white70,
+                                          ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                width: 80,
+                                child: Text(
+                                  title,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isUnlocked
+                                        ? Colors.white
+                                        : Colors.grey.shade400,
+                                    fontWeight: FontWeight.bold,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (isCompleted && level != null)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.greenAccent.shade700,
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.greenAccent.withOpacity(
+                                          0.2,
+                                        ),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Text(
+                                    'Lv $level',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _ExercisePageState extends State<ExercisePage> {
-  int currentIndex = 0;
+class _ZigzagPathPainter extends CustomPainter {
+  final int itemCount;
+  final double bubbleSize;
+  final double verticalSpacing;
+  final double horizontalOffset;
+  final double maxWidth;
 
-  void goToNextExercise() {
-    if (currentIndex < widget.exercises.length - 1) {
-      setState(() {
-        currentIndex++;
-      });
-    } else {
-      // Tous les exercices sont finis
-      showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: const Text("Well done!"),
-          content: const Text("You’ve completed all the exercises."),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
+  _ZigzagPathPainter({
+    required this.itemCount,
+    required this.bubbleSize,
+    required this.verticalSpacing,
+    required this.horizontalOffset,
+    required this.maxWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = Colors.greenAccent.withOpacity(0.8)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    for (int i = 0; i < itemCount - 1; i++) {
+      final isLeftCurrent = i % 2 == 0;
+      final isLeftNext = (i + 1) % 2 == 0;
+
+      // Position du centre de la bulle actuelle
+      final startX = isLeftCurrent
+          ? horizontalOffset + bubbleSize / 2
+          : maxWidth - horizontalOffset - bubbleSize / 2;
+      final startY = i * (bubbleSize + verticalSpacing) + bubbleSize / 2;
+
+      // Position du centre de la bulle suivante
+      final endX = isLeftNext
+          ? horizontalOffset + bubbleSize / 2
+          : maxWidth - horizontalOffset - bubbleSize / 2;
+      final endY = (i + 1) * (bubbleSize + verticalSpacing) + bubbleSize / 2;
+
+      // Dessine une ligne droite entre les deux centres
+      canvas.drawLine(
+        Offset(startX, startY + bubbleSize / 2), // Commence au bas de la bulle
+        Offset(
+          endX,
+          endY - bubbleSize / 2,
+        ), // Finit au haut de la bulle suivante
+        paint,
       );
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final currentExercise = widget.exercises[currentIndex];
-
-    // Sélectionne le bon widget selon le type
-    switch (currentExercise.type) {
-      case 'multiple_choice':
-        return MultipleChoiceWidget(
-          exercise: currentExercise,
-          onNext: goToNextExercise,
-        );
-      case 'true_or_false':
-        return TrueOrFalseWidget(
-          exercise: currentExercise,
-          onNext: goToNextExercise,
-        );
-      case 'drag_and_drop':
-        return DragAndDropWidget(
-          exercise: currentExercise,
-          onNext: goToNextExercise,
-        );
-      case 'audio':
-        return AudioExerciseWidget(
-          exercise: currentExercise,
-          onNext: goToNextExercise,
-        );
-      default:
-        return const Center(child: Text("Unknown exercise type"));
-    }
-  }
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-Future<void> ajouterLeconFirestore() async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('lessons')
-        .doc('Demonstrative Pronouns 1') // 🔥 NOM FIXE DU DOCUMENT
-        .set({
-          "title": "Demonstrative Pronouns 1",
-          "category": "Pronouns",
-          "newWords": [
-            {"arabic": "هَذَا", "english": "this (masculine singular)"},
-            {
-              "arabic": "هَذِهِ",
-              "english": "this (feminine singular or inanimate plural)",
-            },
-            {"arabic": "هَذَانِ", "english": "these two (masculine dual)"},
-            {
-              "arabic": "هَؤُلَاءِ",
-              "english": "these (plural, masculine/feminine)",
-            },
-          ],
-          "exercises": [
-            {
-              "type": "multiple_choice",
-              "question": "What does هَذَا mean?",
-              "options": ["that", "this (masculine singular)", "those", "he"],
-              "answer": "this (masculine singular)",
-            },
-            {
-              "type": "multiple_choice",
-              "question":
-                  "Which one is the correct Arabic for 'these (plural)'?",
-              "options": ["هَذِهِ", "هَذَا", "هَؤُلَاءِ", "ذَلِكَ"],
-              "answer": "هَؤُلَاءِ",
-            },
-            {
-              "type": "true_or_false",
-              "question":
-                  "هَذِهِ refers to feminine singular or inanimate plural.",
-              "answer": true,
-            },
-            {
-              "type": "true_or_false",
-              "question": "هَذَانِ is used for three or more items.",
-              "answer": false,
-            },
-            {
-              "type": "drag_and_drop",
-              "instruction":
-                  "Match each Arabic pronoun to its English meaning.",
-              "pairs": {
-                "هَذَا": "this (masculine singular)",
-                "هَذَانِ": "these two (masculine dual)",
-                "هَذِهِ": "this (feminine singular)",
-                "هَؤُلَاءِ": "these (plural)",
-              },
-            },
-            {
-              "type": "multiple_choice",
-              "question": "Which is the dual masculine form of 'this'?",
-              "options": ["هَذَانِ", "هَذَا", "هَذِهِ", "هَؤُلَاءِ"],
-              "answer": "هَذَانِ",
-            },
-            {
-              "type": "drag_and_drop",
-              "instruction": "Match each pronoun to the correct gender/number.",
-              "pairs": {
-                "هَذَا": "masculine singular",
-                "هَذِهِ": "feminine singular",
-                "هَذَانِ": "masculine dual",
-                "هَؤُلَاءِ": "plural",
-              },
-            },
-            {
-              "type": "audio",
-              "question": "Listen and choose the correct meaning.",
-              "audioUrl": "audio/hadha.mp3",
-              "options": ["this", "that", "he", "those"],
-              "answer": "this",
-            },
-            {
-              "type": "audio",
-              "question": "Listen and identify the Arabic word.",
-              "audioUrl": "audio/hadhihi.mp3",
-              "options": ["هَذَا", "هَذِهِ", "هَذَانِ", "هَؤُلَاءِ"],
-              "answer": "هَذِهِ",
-            },
-            {
-              "type": "true_or_false",
-              "question":
-                  "هَؤُلَاءِ is used for both masculine and feminine plural.",
-              "answer": true,
-            },
-          ],
-        });
-    print("Leçon ajoutée avec succès !");
-  } catch (e) {
-    print("Erreur lors de l'ajout de la leçon : $e");
+class ExercisesScreen extends StatelessWidget {
+  const ExercisesScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: FutureBuilder<QuerySnapshot>(
+        future: FirebaseFirestore.instance.collection("lessons").get(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No lessons found."));
+          }
+
+          // Extract and flatten all exercises from all lessons
+          final exercises = snapshot.data!.docs
+              .expand((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final lessonExercises =
+                    data['exercises'] as List<dynamic>? ?? [];
+                return lessonExercises.map(
+                  (ex) => Exercise.fromJson(ex as Map<String, dynamic>),
+                );
+              })
+              .where(
+                (exercise) =>
+                    exercise.question.isNotEmpty && exercise.type.isNotEmpty,
+              )
+              .toList();
+
+          print('Loaded  [32m${exercises.length} [0m exercises from lessons');
+
+          // Passe la liste d'exercices à la page
+          return ExercisePage(exercises: exercises);
+        },
+      ),
+    );
   }
 }

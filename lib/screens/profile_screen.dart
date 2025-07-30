@@ -1,177 +1,282 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfilScreen extends StatelessWidget {
-  final String userId = 'user_123'; // à rendre dynamique plus tard
-
   const ProfilScreen({super.key});
-
-  Future<void> saveUserData(BuildContext context) async {
-    try {
-      await FirebaseFirestore.instance.collection('users').doc(userId).set({
-        'name': 'Bhy',
-        'level': 3,
-        'xp': 1200,
-        'streak': 5,
-        'lastUpdated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Utilisateur enregistré ✅')));
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Erreur ❌')));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    const String nom = 'Bhy';
-    const int niveau = 3;
-    const int xp = 1200;
-    const int streak = 5;
+    // Example user data (replace with real data as needed)
+    final String avatarUrl = '';
+    final String username = 'QuranLearner';
+    final String email = 'user@email.com';
+    final int xp = 1200;
+    final int level = 5;
+    final int streak = 7;
+    final List<Map<String, dynamic>> achievements = [
+      {'icon': Icons.star, 'label': 'First Lesson'},
+      {'icon': Icons.emoji_events, 'label': '10 XP'},
+      {'icon': Icons.local_fire_department, 'label': '7 Day Streak'},
+    ];
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF000000)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      backgroundColor: const Color(0xFF121212),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        backgroundColor: Colors.black,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: Color(0xFFD4AF37)),
+            onPressed: () {
+              // TODO: Implement edit profile
+            },
           ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 20),
-                CircleAvatar(
-                  radius: 55,
-                  backgroundImage: NetworkImage(
-                    'https://ui-avatars.com/api/?name=$nom&background=2D6A4F&color=fff',
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Avatar
+            Center(
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 54,
+                    backgroundColor: const Color(0xFFD4AF37),
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundImage: avatarUrl.isNotEmpty
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      child: avatarUrl.isEmpty
+                          ? const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.white,
+                            )
+                          : null,
+                      backgroundColor: Colors.grey.shade900,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  nom,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'Niveau $niveau',
-                  style: const TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-                const SizedBox(height: 24),
-
-                // XP Section
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.amber.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Color(0xFFD4AF37), width: 2),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Expérience',
-                        style: TextStyle(color: Colors.white70),
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.camera_alt,
+                          color: Color(0xFFD4AF37),
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          // TODO: Implement avatar change
+                        },
                       ),
-                      const SizedBox(height: 8),
-                      LinearProgressIndicator(
-                        value: (xp % 1000) / 1000,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            // Username
+            Text(
+              username,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFD4AF37),
+              ),
+            ),
+            const SizedBox(height: 6),
+            // Email
+            Text(
+              email,
+              style: TextStyle(fontSize: 16, color: Colors.grey.shade400),
+            ),
+            const SizedBox(height: 24),
+            // XP and Level Card
+            Card(
+              color: const Color(0xFF1E1E1E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 20,
+                  horizontal: 24,
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.emoji_events,
+                              color: Color(0xFFD4AF37),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Level $level',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '$xp XP',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Color(0xFFD4AF37),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Progress bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: (xp % 1000) / 1000, // Example: 1000 XP per level
                         minHeight: 10,
                         backgroundColor: Colors.grey.shade800,
-                        color: const Color(0xFFD4AF37),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$xp XP',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Streak
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 12,
-                    horizontal: 20,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.orange, width: 1.5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.local_fire_department,
-                        color: Colors.orange,
-                        size: 28,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Streak : $streak jours',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 18,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFFD4AF37),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                const Divider(height: 50, thickness: 1, color: Colors.white24),
-
-                ElevatedButton.icon(
-                  onPressed: () => saveUserData(context),
-                  icon: const Icon(Icons.cloud_upload, color: Colors.white),
-                  label: const Text(
-                    'Enregistrer les données',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2D6A4F),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 14,
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(height: 24),
+            // Streak Card
+            Card(
+              color: const Color(0xFF1E1E1E),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 18,
+                  horizontal: 24,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department,
+                      color: Colors.orange,
+                      size: 32,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      '$streak Day Streak',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Achievements
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Achievements',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey.shade300,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 80,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: achievements.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 16),
+                itemBuilder: (context, index) {
+                  final achievement = achievements[index];
+                  return Container(
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF232323),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          achievement['icon'],
+                          color: Color(0xFFD4AF37),
+                          size: 32,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          achievement['label'],
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 36),
+            // Logout Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // TODO: Implement logout
+                },
+                icon: const Icon(Icons.logout, color: Colors.black),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.black),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFD4AF37),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
-
-int calculateLevel(int xp) {
-  if (xp >= 3500) return 5;
-  if (xp >= 2000) return 4;
-  if (xp >= 1000) return 3;
-  if (xp >= 500) return 2;
-  return 1;
 }

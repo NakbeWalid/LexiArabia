@@ -4,8 +4,13 @@ import 'package:dualingocoran/Exercises/Exercise.dart';
 
 class AudioExercise extends StatefulWidget {
   final Exercise exercise;
+  final VoidCallback onNext;
 
-  const AudioExercise({required this.exercise, super.key});
+  const AudioExercise({
+    required this.exercise,
+    super.key,
+    required this.onNext,
+  });
 
   @override
   State<AudioExercise> createState() => _AudioExerciseState();
@@ -14,6 +19,16 @@ class AudioExercise extends StatefulWidget {
 class _AudioExerciseState extends State<AudioExercise> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? selectedOption;
+
+  @override
+  void didUpdateWidget(covariant AudioExercise oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.exercise != widget.exercise) {
+      setState(() {
+        selectedOption = null;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -33,10 +48,32 @@ class _AudioExerciseState extends State<AudioExercise> {
         backgroundColor: isCorrect ? Colors.green : Colors.red,
       ),
     );
+    widget.onNext();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Check if we have valid exercise data
+    if (widget.exercise.options == null || widget.exercise.options!.isEmpty) {
+      return Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1B1B2F), Color(0xFF121212)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Text(
+              "No valid exercise data available",
+              style: TextStyle(fontSize: 18, color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(

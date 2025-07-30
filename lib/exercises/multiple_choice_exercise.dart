@@ -20,6 +20,17 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
   String? selectedOption;
   bool showFeedback = false;
 
+  @override
+  void didUpdateWidget(covariant MultipleChoiceExercise oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.exercise != widget.exercise) {
+      setState(() {
+        selectedOption = null;
+        showFeedback = false;
+      });
+    }
+  }
+
   void checkAnswer(String option) async {
     setState(() {
       selectedOption = option;
@@ -44,19 +55,45 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
         backgroundColor: isCorrect ? Colors.green : Colors.red,
       ),
     );
+
+    Future.delayed(const Duration(milliseconds: 800), widget.onNext);
   }
 
   @override
   Widget build(BuildContext context) {
+    // Check if we have valid exercise data
+    if (widget.exercise.options == null || widget.exercise.options!.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            "Multiple Choice",
+            style: TextStyle(
+              fontFamily: 'Poppins',
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          centerTitle: true,
+        ),
+        body: Center(
+          child: Text(
+            "No valid exercise data available",
+            style: TextStyle(fontSize: 18),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
           "Multiple Choice",
           style: TextStyle(
-            fontFamily: 'Poppins', // ✅ Police personnalisée (voir plus bas)
-            fontSize: 20, // ✅ Taille de la police
-            fontWeight: FontWeight.bold, // ✅ Gras
-            color: Colors.white, // ✅ Couleur du texte
+            fontFamily: 'Poppins',
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
         centerTitle: true,
