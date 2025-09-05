@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:audioplayers/audioplayers.dart';
+import '../utils/arabic_text_style.dart';
 
 class MultipleChoiceExercise extends StatefulWidget {
   final Exercise exercise;
@@ -16,9 +22,27 @@ class MultipleChoiceExercise extends StatefulWidget {
   _MultipleChoiceExerciseState createState() => _MultipleChoiceExerciseState();
 }
 
-class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
+class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
+    with TickerProviderStateMixin {
   String? selectedOption;
   bool showFeedback = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  late AnimationController _controller;
+  late AnimationController _pulseController;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _controller.forward();
+  }
 
   @override
   void didUpdateWidget(covariant MultipleChoiceExercise oldWidget) {
@@ -28,6 +52,9 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
         selectedOption = null;
         showFeedback = false;
       });
+      _controller.reset();
+      _pulseController.reset();
+      _controller.forward();
     }
   }
 
@@ -38,25 +65,75 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
     });
 
     final isCorrect = option == widget.exercise.answer;
+
+    // Audio et haptic feedback
     if (isCorrect) {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc('user_123')
-          .update({
-            'xp': FieldValue.increment(10), // +10 XP par bonne réponse
-            'streak': FieldValue.increment(
-              1,
-            ), // streak +1 par session (améliorable)
-          });
+      HapticFeedback.lightImpact();
+      // try {
+      //   await _audioPlayer.play(AssetSource('sounds/correct.mp3'));
+      // } catch (e) {
+      //   print('Audio error: $e');
+      // }
+      _pulseController.forward();
+    } else {
+      HapticFeedback.mediumImpact();
+      // try {
+      //   await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
+      // } catch (e) {
+      //   print('Audio error: $e');
+      // }
     }
+
+    if (isCorrect) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc('user_123')
+            .update({
+              'xp': FieldValue.increment(10),
+              'streak': FieldValue.increment(1),
+            });
+      } catch (e) {
+        print('Firestore error: $e');
+      }
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(isCorrect ? "Correct ✅" : "Incorrect ❌"),
-        backgroundColor: isCorrect ? Colors.green : Colors.red,
+        content: Row(
+          children: [
+            Icon(
+              isCorrect ? Icons.check_circle : Icons.cancel,
+              color: Colors.white,
+            ),
+            SizedBox(width: 8),
+            Text(
+              isCorrect ? "Perfect! ✨" : "Oops, try again! 💪",
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        backgroundColor: isCorrect
+            ? Colors.green.shade600
+            : Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
 
-    Future.delayed(const Duration(milliseconds: 800), widget.onNext);
+    print('About to call widget.onNext in 1.5 seconds...');
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      print('Calling widget.onNext now!');
+      widget.onNext();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _pulseController.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   @override
@@ -64,67 +141,302 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise> {
     // Check if we have valid exercise data
     if (widget.exercise.options == null || widget.exercise.options!.isEmpty) {
       return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            "Multiple Choice",
-            style: TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          centerTitle: true,
-        ),
-        body: Center(
-          child: Text(
-            "No valid exercise data available",
-            style: TextStyle(fontSize: 18),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.white70),
+                SizedBox(height: 16),
+                Text(
+                  "No valid exercise data available",
+                  style: GoogleFonts.poppins(fontSize: 18, color: Colors.white),
+                ),
+              ],
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Multiple Choice",
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-        centerTitle: true,
-      ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                        ),
+                        Expanded(
+                          child: Text(
+                            "Multiple Choice",
+                            style: GoogleFonts.poppins(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        SizedBox(width: 48), // Balance the back button
+                      ],
+                    ),
+                    SizedBox(height: 20),
+                    Container(
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                      ),
+                      child: ArabicText(
+                        widget.exercise.question,
+                        style: ArabicTextStyle.smartStyle(
+                          widget.exercise.question,
+                          fontSize: 20,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
 
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.exercise.question,
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            ...widget.exercise.options!.map(
-              (option) => Card(
-                color: selectedOption == option
-                    ? (option == widget.exercise.answer
-                          ? Colors.green
-                          : Colors.red.shade300)
-                    : null,
-                child: ListTile(
-                  title: Text(option),
-                  onTap: selectedOption == null
-                      ? () => checkAnswer(option)
-                      : null,
+              SizedBox(height: 20),
+
+              // Options
+              Expanded(
+                child: AnimationLimiter(
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: widget.exercise.options!.length,
+                    itemBuilder: (context, index) {
+                      final option = widget.exercise.options![index];
+                      final isSelected = selectedOption == option;
+                      final isCorrect = option == widget.exercise.answer;
+                      final showResult = showFeedback && isSelected;
+
+                      return AnimationConfiguration.staggeredList(
+                        position: index,
+                        duration: const Duration(milliseconds: 600),
+                        child: SlideAnimation(
+                          verticalOffset: 50.0,
+                          child: FadeInAnimation(
+                            child:
+                                Container(
+                                      margin: EdgeInsets.only(bottom: 16),
+                                      child: GestureDetector(
+                                        onTap: selectedOption == null
+                                            ? () => checkAnswer(option)
+                                            : null,
+                                        child: AnimatedContainer(
+                                          duration: Duration(milliseconds: 400),
+                                          padding: EdgeInsets.all(20),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: showResult
+                                                  ? isCorrect
+                                                        ? [
+                                                            Colors
+                                                                .green
+                                                                .shade400,
+                                                            Colors
+                                                                .green
+                                                                .shade600,
+                                                          ]
+                                                        : [
+                                                            Colors.red.shade400,
+                                                            Colors.red.shade600,
+                                                          ]
+                                                  : isSelected
+                                                  ? [
+                                                      Colors.blue.shade400,
+                                                      Colors.blue.shade600,
+                                                    ]
+                                                  : [
+                                                      Colors.white.withOpacity(
+                                                        0.9,
+                                                      ),
+                                                      Colors.white.withOpacity(
+                                                        0.7,
+                                                      ),
+                                                    ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withOpacity(
+                                                  0.2,
+                                                ),
+                                                blurRadius: 12,
+                                                offset: Offset(0, 6),
+                                              ),
+                                            ],
+                                            border: isSelected
+                                                ? Border.all(
+                                                    color: showResult
+                                                        ? (isCorrect
+                                                              ? Colors
+                                                                    .green
+                                                                    .shade300
+                                                              : Colors
+                                                                    .red
+                                                                    .shade300)
+                                                        : Colors.blue.shade300,
+                                                    width: 3,
+                                                  )
+                                                : null,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Container(
+                                                width: 40,
+                                                height: 40,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color:
+                                                      (showResult || isSelected)
+                                                      ? Colors.white
+                                                            .withOpacity(0.2)
+                                                      : Colors.grey.shade300,
+                                                ),
+                                                child: Center(
+                                                  child: showResult
+                                                      ? Icon(
+                                                          isCorrect
+                                                              ? Icons.check
+                                                              : Icons.close,
+                                                          color: Colors.white,
+                                                          size: 24,
+                                                        )
+                                                      : Text(
+                                                          String.fromCharCode(
+                                                            65 + index,
+                                                          ), // A, B, C, D
+                                                          style: GoogleFonts.poppins(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: isSelected
+                                                                ? Colors.white
+                                                                : Colors
+                                                                      .grey
+                                                                      .shade700,
+                                                            fontSize: 18,
+                                                          ),
+                                                        ),
+                                                ),
+                                              ),
+                                              SizedBox(width: 16),
+                                              Expanded(
+                                                child: ArabicText(
+                                                  option,
+                                                  style:
+                                                      ArabicTextStyle.smartStyle(
+                                                        option,
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color:
+                                                            (showResult ||
+                                                                isSelected)
+                                                            ? Colors.white
+                                                            : Colors
+                                                                  .grey
+                                                                  .shade800,
+                                                      ),
+                                                ),
+                                              ),
+                                              if (showResult && isCorrect)
+                                                Container(
+                                                  padding: EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 6,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white
+                                                        .withOpacity(0.2),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    "+10 XP",
+                                                    style: GoogleFonts.poppins(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                    .animate(target: isSelected ? 1 : 0)
+                                    .scale(
+                                      begin: Offset(1, 1),
+                                      end: Offset(1.02, 1.02),
+                                    )
+                                    .animate(
+                                      target: showResult && isCorrect ? 1 : 0,
+                                    )
+                                    .shimmer(
+                                      duration: 1500.ms,
+                                      color: Colors.white.withOpacity(0.5),
+                                    ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
+
+              // Bottom hint
+              if (!showFeedback)
+                Container(
+                  padding: EdgeInsets.all(20),
+                  child: Text(
+                    "Choose the correct answer",
+                    style: GoogleFonts.poppins(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 16,
+                    ),
+                  ),
+                ).animate().fadeIn(delay: 800.ms),
+            ],
+          ),
         ),
       ),
     );

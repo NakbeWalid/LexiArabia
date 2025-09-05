@@ -1,340 +1,493 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
-// import 'package:audioplayers/audioplayers.dart';
-// import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import '../utils/arabic_text_style.dart';
 
-// class DragDropExercise extends StatefulWidget {
-//   final Exercise exercise;
-//   final VoidCallback onNext;
+class DragDropExercise extends StatefulWidget {
+  final Exercise exercise;
+  final VoidCallback onNext;
 
-//   const DragDropExercise({
-//     super.key,
-//     required this.exercise,
-//     required this.onNext,
-//   });
+  const DragDropExercise({
+    super.key,
+    required this.exercise,
+    required this.onNext,
+  });
 
-//   @override
-//   State<DragDropExercise> createState() => _DragDropExerciseState();
-// }
+  @override
+  State<DragDropExercise> createState() => _DragDropExerciseState();
+}
 
-// class _DragDropExerciseState extends State<DragDropExercise> {
-//   List<String> targetList = [];
-//   List<String> remainingList = [];
-//   final AudioPlayer _audioPlayer = AudioPlayer();
+class _DragDropExerciseState extends State<DragDropExercise>
+    with TickerProviderStateMixin {
+  List<String?> sentenceSlots = [];
+  List<String> availableWords = [];
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  late AnimationController _controller;
+  late AnimationController _pulseController;
 
-//   // Variables pour drag_drop avec pairs
-//   Map<String, String> correctPairs = {};
-//   Map<String, String> userPairs = {};
-//   List<String> draggableItems = [];
-//   List<String> targetItems = [];
+  String targetSentence = "";
+  List<String> correctWords = [];
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     _initializeExercise();
-//   }
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _initializeExercise();
+    _controller.forward();
+  }
 
-//   void _initializeExercise() {
-//     // Si c'est un drag_drop avec pairs
-//     if (widget.exercise.dragDropPairs != null &&
-//         widget.exercise.dragDropPairs!.isNotEmpty) {
-//       correctPairs.clear();
-//       userPairs.clear();
-//       draggableItems.clear();
-//       targetItems.clear();
+  void _initializeExercise() {
+    if (widget.exercise.answer != null && widget.exercise.answer!.isNotEmpty) {
+      targetSentence = widget.exercise.answer!;
+      correctWords = targetSentence.split(' ');
+      sentenceSlots = List.filled(correctWords.length, null);
+      availableWords = List.from(correctWords);
+      availableWords.shuffle();
+    }
+  }
 
-//       for (var pair in widget.exercise.dragDropPairs!) {
-//         final from = pair['from']?.toString() ?? '';
-//         final to = pair['to']?.toString() ?? '';
-//         if (from.isNotEmpty && to.isNotEmpty) {
-//           correctPairs[from] = to;
-//           draggableItems.add(from);
-//           targetItems.add(to);
-//         }
-//       }
-//       draggableItems.shuffle();
-//       targetItems.shuffle();
-//     } else {
-//       // Mode classique avec answer
-//       final correctWord = widget.exercise.answer ?? '';
-//       if (correctWord.isNotEmpty) {
-//         targetList = List.filled(correctWord.length, "");
-//         remainingList = correctWord.split('')..shuffle();
-//       }
-//     }
-//   }
+  @override
+  void didUpdateWidget(covariant DragDropExercise oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.exercise != widget.exercise) {
+      _initializeExercise();
+      setState(() {});
+      _controller.reset();
+      _pulseController.reset();
+      _controller.forward();
+    }
+  }
 
-//   @override
-//   void didUpdateWidget(covariant DragDropExercise oldWidget) {
-//     super.didUpdateWidget(oldWidget);
-//     if (oldWidget.exercise != widget.exercise) {
-//       _initializeExercise();
-//       setState(() {});
-//     }
-//   }
+  void handleWordDrop(int index, String word) async {
+    setState(() {
+      // Remove word from other slots if it exists
+      for (int i = 0; i < sentenceSlots.length; i++) {
+        if (sentenceSlots[i] == word) {
+          sentenceSlots[i] = null;
+        }
+      }
+      sentenceSlots[index] = word;
+    });
 
-//   void handleDrop(int index, String? letter) async {
-//     if (letter == null) return;
+    // Check if sentence is complete
+    if (!sentenceSlots.contains(null)) {
+      bool isCorrect = true;
+      for (int i = 0; i < sentenceSlots.length; i++) {
+        if (sentenceSlots[i] != correctWords[i]) {
+          isCorrect = false;
+          break;
+        }
+      }
 
-//     setState(() {
-//       targetList[index] = letter;
-//       remainingList.remove(letter);
-//     });
+      if (isCorrect) {
+        HapticFeedback.lightImpact();
+        try {
+          await _audioPlayer.play(AssetSource('sounds/correct.mp3'));
+        } catch (e) {
+          print('Audio error: $e');
+        }
+        _pulseController.forward();
 
-//     if (!targetList.contains("")) {
-//       final result = targetList.join() == widget.exercise.answer;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.celebration, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  "Perfect sentence! ✨",
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
 
-//       await _audioPlayer.play(
-//         AssetSource(result ? 'sounds/correct.mp3' : 'sounds/wrong.mp3'),
-//       );
-//       HapticFeedback.mediumImpact();
+        Future.delayed(const Duration(milliseconds: 2000), widget.onNext);
+      } else {
+        HapticFeedback.mediumImpact();
+        try {
+          await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
+        } catch (e) {
+          print('Audio error: $e');
+        }
 
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text(result ? "Correct ✅" : "Incorrect ❌"),
-//           backgroundColor: result ? Colors.green : Colors.red,
-//         ),
-//       );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.refresh, color: Colors.white),
+                SizedBox(width: 8),
+                Text(
+                  "Word order is wrong. Try again!",
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            action: SnackBarAction(
+              label: 'Reset',
+              textColor: Colors.white,
+              onPressed: reset,
+            ),
+          ),
+        );
+      }
+    }
+  }
 
-//       Future.delayed(const Duration(milliseconds: 800), widget.onNext);
-//     }
-//   }
+  void reset() {
+    setState(() {
+      _initializeExercise();
+    });
+    _controller.reset();
+    _pulseController.reset();
+    _controller.forward();
+  }
 
-//   void handlePairDrop(String target, String? draggable) async {
-//     if (draggable == null) return;
+  @override
+  void dispose() {
+    _controller.dispose();
+    _pulseController.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
 
-//     setState(() {
-//       // Enlève l'ancien mapping si il existe
-//       userPairs.removeWhere((key, value) => value == target);
-//       userPairs.removeWhere((key, value) => key == draggable);
+  @override
+  Widget build(BuildContext context) {
+    if (widget.exercise.answer == null || widget.exercise.answer!.isEmpty) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: Colors.white70),
+                SizedBox(height: 16),
+                Text(
+                  "No valid exercise data available",
+                  style: GoogleFonts.poppins(fontSize: 18, color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-//       // Ajoute le nouveau mapping
-//       userPairs[draggable] = target;
-//     });
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                    ),
+                    Expanded(
+                      child: Text(
+                        "Complete the Sentence",
+                        style: GoogleFonts.poppins(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: reset,
+                      icon: Icon(Icons.refresh, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
 
-//     // Vérifie si tous les pairs sont complétés
-//     if (userPairs.length == correctPairs.length) {
-//       bool allCorrect = true;
-//       for (var entry in userPairs.entries) {
-//         if (correctPairs[entry.key] != entry.value) {
-//           allCorrect = false;
-//           break;
-//         }
-//       }
+              // Question
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 20),
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                ),
+                child: ArabicText(
+                  widget.exercise.question,
+                  style: ArabicTextStyle.smartStyle(
+                    widget.exercise.question,
+                    fontSize: 20,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ).animate().fadeIn(delay: 300.ms).scale(),
 
-//       await _audioPlayer.play(
-//         AssetSource(allCorrect ? 'sounds/correct.mp3' : 'sounds/wrong.mp3'),
-//       );
-//       HapticFeedback.mediumImpact();
+              SizedBox(height: 40),
 
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text(allCorrect ? "Correct ✅" : "Incorrect ❌"),
-//           backgroundColor: allCorrect ? Colors.green : Colors.red,
-//         ),
-//       );
+              // Progress indicator
+              Container(
+                margin: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    Text(
+                      "Progress: ${sentenceSlots.where((slot) => slot != null).length}/${sentenceSlots.length}",
+                      style: GoogleFonts.poppins(
+                        color: Colors.white.withOpacity(0.8),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value:
+                          sentenceSlots.where((slot) => slot != null).length /
+                          sentenceSlots.length,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.blue.shade400,
+                      ),
+                      minHeight: 6,
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 600.ms).scaleX(),
 
-//       Future.delayed(const Duration(milliseconds: 800), widget.onNext);
-//     }
-//   }
+              SizedBox(height: 40),
 
-//   void reset() {
-//     setState(() {
-//       _initializeExercise();
-//     });
-//   }
+              // Sentence slots
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      "Complete the sentence:",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                    SizedBox(height: 20),
 
-//   @override
-//   void dispose() {
-//     _audioPlayer.dispose();
-//     super.dispose();
-//   }
+                    // Sentence building area
+                    Container(
+                      margin: EdgeInsets.symmetric(horizontal: 20),
+                      padding: EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.2),
+                        ),
+                      ),
+                      child: AnimationLimiter(
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: List.generate(sentenceSlots.length, (
+                            index,
+                          ) {
+                            return AnimationConfiguration.staggeredList(
+                              position: index,
+                              duration: const Duration(milliseconds: 400),
+                              child: SlideAnimation(
+                                verticalOffset: 30.0,
+                                child: FadeInAnimation(
+                                  child: DragTarget<String>(
+                                    builder:
+                                        (context, candidateData, rejectedData) {
+                                          return _wordSlot(
+                                            sentenceSlots[index],
+                                            index,
+                                          );
+                                        },
+                                    onAcceptWithDetails: (details) =>
+                                        handleWordDrop(index, details.data),
+                                    onWillAcceptWithDetails: (_) => true,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: 800.ms),
 
-//   @override
-//   Widget build(BuildContext context) {
-//     // Check if we have valid exercise data
-//     if (widget.exercise.dragDropPairs == null &&
-//         (widget.exercise.answer == null || widget.exercise.answer!.isEmpty)) {
-//       return Scaffold(
-//         appBar: AppBar(title: Text("Drag & Drop")),
-//         body: Center(
-//           child: Text(
-//             "No valid exercise data available",
-//             style: TextStyle(fontSize: 18),
-//           ),
-//         ),
-//       );
-//     }
+                    SizedBox(height: 40),
 
-//     return Scaffold(
-//       appBar: AppBar(title: Text("Drag & Drop")),
-//       body: Padding(
-//         padding: const EdgeInsets.all(24.0),
-//         child: Column(
-//           children: [
-//             Text(
-//               widget.exercise.question,
-//               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-//               textAlign: TextAlign.center,
-//             ),
-//             SizedBox(height: 30),
+                    Text(
+                      "Drag the words:",
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                    SizedBox(height: 20),
 
-//             // Si c'est un exercice avec pairs
-//             if (widget.exercise.dragDropPairs != null &&
-//                 widget.exercise.dragDropPairs!.isNotEmpty)
-//               ..._buildPairsExercise()
-//             else
-//               ..._buildLetterExercise(),
+                    // Available words
+                    Expanded(
+                      child: AnimationLimiter(
+                        child: Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          alignment: WrapAlignment.center,
+                          children: availableWords.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final word = entry.value;
+                            final isUsed = sentenceSlots.contains(word);
 
-//             SizedBox(height: 40),
-//             ElevatedButton.icon(
-//               onPressed: reset,
-//               icon: Icon(Icons.refresh),
-//               label: Text("Reset"),
-//               style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
+                            return AnimationConfiguration.staggeredList(
+                              position: index,
+                              duration: const Duration(milliseconds: 600),
+                              child: ScaleAnimation(
+                                child: FadeInAnimation(
+                                  child: Draggable<String>(
+                                    data: word,
+                                    feedback: Material(
+                                      color: Colors.transparent,
+                                      child: _wordBox(word, isFeedback: true),
+                                    ),
+                                    childWhenDragging: Opacity(
+                                      opacity: 0.3,
+                                      child: _wordBox(word),
+                                    ),
+                                    child: Opacity(
+                                      opacity: isUsed ? 0.5 : 1.0,
+                                      child: _wordBox(word),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-//   List<Widget> _buildPairsExercise() {
-//     return [
-//       // Zones de dépôt pour les targets
-//       Text(
-//         "Drop here:",
-//         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//       ),
-//       SizedBox(height: 10),
-//       Wrap(
-//         spacing: 10,
-//         runSpacing: 10,
-//         children: targetItems.map((target) {
-//           final assignedDraggable = userPairs.entries
-//               .where((entry) => entry.value == target)
-//               .map((entry) => entry.key)
-//               .firstOrNull;
+  Widget _wordSlot(String? word, int index) {
+    return AnimatedContainer(
+          duration: Duration(milliseconds: 300),
+          width: 100,
+          height: 50,
+          margin: EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: word != null
+                  ? [Colors.blue.shade400, Colors.blue.shade600]
+                  : [
+                      Colors.white.withOpacity(0.1),
+                      Colors.white.withOpacity(0.05),
+                    ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: word != null
+                  ? Colors.blue.shade300
+                  : Colors.white.withOpacity(0.3),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              word ?? "___",
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: word != null
+                    ? Colors.white
+                    : Colors.white.withOpacity(0.5),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        )
+        .animate(target: word != null ? 1 : 0)
+        .scale(begin: Offset(1, 1), end: Offset(1.05, 1.05));
+  }
 
-//           return DragTarget<String>(
-//             builder: (context, candidateData, rejectedData) {
-//               return Container(
-//                 width: 120,
-//                 height: 60,
-//                 alignment: Alignment.center,
-//                 decoration: BoxDecoration(
-//                   color: assignedDraggable != null
-//                       ? Colors.green.shade100
-//                       : Colors.grey.shade200,
-//                   border: Border.all(color: Colors.black),
-//                   borderRadius: BorderRadius.circular(8),
-//                 ),
-//                 child: Text(
-//                   assignedDraggable ?? target,
-//                   style: TextStyle(
-//                     fontSize: 16,
-//                     fontWeight: FontWeight.bold,
-//                     color: Colors.black,
-//                   ),
-//                   textAlign: TextAlign.center,
-//                 ),
-//               );
-//             },
-//             onAcceptWithDetails: (details) =>
-//                 handlePairDrop(target, details.data),
-//             onWillAcceptWithDetails: (_) => true,
-//           );
-//         }).toList(),
-//       ),
-//       SizedBox(height: 30),
-
-//       // Items à glisser
-//       Text(
-//         "Drag from here:",
-//         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-//       ),
-//       SizedBox(height: 10),
-//       Wrap(
-//         spacing: 10,
-//         runSpacing: 10,
-//         children: draggableItems.map((draggable) {
-//           final isUsed = userPairs.containsKey(draggable);
-
-//           return Draggable<String>(
-//             data: draggable,
-//             feedback: Material(
-//               color: Colors.transparent,
-//               child: _letterBox(draggable, isFeedback: true),
-//             ),
-//             childWhenDragging: Opacity(
-//               opacity: 0.3,
-//               child: _letterBox(draggable),
-//             ),
-//             child: Opacity(
-//               opacity: isUsed ? 0.5 : 1.0,
-//               child: _letterBox(draggable),
-//             ),
-//           );
-//         }).toList(),
-//       ),
-//     ];
-//   }
-
-//   List<Widget> _buildLetterExercise() {
-//     return [
-//       // Zones de dépôt
-//       Row(
-//         mainAxisAlignment: MainAxisAlignment.center,
-//         children: List.generate(targetList.length, (index) {
-//           final current = targetList[index];
-//           return DragTarget<String>(
-//             builder: (context, candidateData, rejectedData) {
-//               return _letterBox(current);
-//             },
-//             onAcceptWithDetails: (details) => handleDrop(index, details.data),
-//             onWillAcceptWithDetails: (_) => targetList[index] == "",
-//           );
-//         }),
-//       ),
-//       SizedBox(height: 30),
-
-//       // Lettres disponibles
-//       Wrap(
-//         spacing: 10,
-//         children: remainingList.map((letter) {
-//           return Draggable<String>(
-//             data: letter,
-//             feedback: Material(
-//               color: Colors.transparent,
-//               child: _letterBox(letter, isFeedback: true),
-//             ),
-//             childWhenDragging: Opacity(opacity: 0.3, child: _letterBox(letter)),
-//             child: _letterBox(letter),
-//           );
-//         }).toList(),
-//       ),
-//     ];
-//   }
-
-//   Widget _letterBox(String letter, {bool isFeedback = false}) {
-//     return Container(
-//       width: 50,
-//       height: 50,
-//       margin: EdgeInsets.symmetric(horizontal: 4),
-//       alignment: Alignment.center,
-//       decoration: BoxDecoration(
-//         color: isFeedback ? Colors.deepPurple.shade100 : Colors.white,
-//         border: Border.all(color: Colors.black),
-//         borderRadius: BorderRadius.circular(8),
-//       ),
-//       child: Text(
-//         letter,
-//         style: TextStyle(
-//           fontSize: 24,
-//           fontWeight: FontWeight.bold,
-//           color: isFeedback ? Colors.deepPurple : Colors.black,
-//         ),
-//       ),
-//     );
-//   }
-// }
+  Widget _wordBox(String word, {bool isFeedback = false}) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isFeedback
+              ? [Colors.purple.shade400, Colors.purple.shade600]
+              : [Colors.white.withOpacity(0.9), Colors.white.withOpacity(0.7)],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Text(
+        word,
+        style: GoogleFonts.poppins(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: isFeedback ? Colors.white : Colors.grey.shade800,
+        ),
+      ),
+    );
+  }
+}
