@@ -99,11 +99,10 @@ class _PairsExerciseState extends State<PairsExercise>
   }
 
   void handleItemTap(String item, bool isLeft) {
-    if (connectedItems.contains(item)) return;
-
     setState(() {
       if (isLeft) {
-        selectedLeftItem = selectedLeftItem == item ? null : item;
+        // Permettre de sélectionner même les éléments connectés
+        selectedLeftItem = item;
       } else {
         // Right item tapped
         if (selectedLeftItem != null) {
@@ -115,6 +114,32 @@ class _PairsExerciseState extends State<PairsExercise>
 
   void _connectItems(String leftItem, String rightItem) async {
     setState(() {
+      // Si l'élément de droite est déjà connecté à un autre élément de gauche,
+      // on déconnecte d'abord cette connexion
+      String? existingLeftItem;
+      for (var entry in userPairs.entries) {
+        if (entry.value == rightItem) {
+          existingLeftItem = entry.key;
+          break;
+        }
+      }
+
+      if (existingLeftItem != null) {
+        userPairs.remove(existingLeftItem);
+        connectedItems.remove(existingLeftItem);
+        connectedItems.remove(rightItem);
+      }
+
+      // Si l'élément de gauche est déjà connecté à un autre élément de droite,
+      // on déconnecte d'abord cette connexion
+      if (userPairs.containsKey(leftItem)) {
+        String existingRightItem = userPairs[leftItem]!;
+        userPairs.remove(leftItem);
+        connectedItems.remove(leftItem);
+        connectedItems.remove(existingRightItem);
+      }
+
+      // Créer la nouvelle connexion
       userPairs[leftItem] = rightItem;
       connectedItems.add(leftItem);
       connectedItems.add(rightItem);
@@ -180,14 +205,15 @@ class _PairsExerciseState extends State<PairsExercise>
 
         Future.delayed(const Duration(milliseconds: 2000), widget.onNext);
       } else {
+        // Afficher un message d'erreur mais permettre de continuer
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.refresh, color: Colors.white),
+                Icon(Icons.info_outline, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
-                  "Some pairs are wrong. Try again!",
+                  "Some pairs are wrong. Complete all pairs to finish!",
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                 ),
               ],
@@ -197,11 +223,7 @@ class _PairsExerciseState extends State<PairsExercise>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            action: SnackBarAction(
-              label: 'Reset',
-              textColor: Colors.white,
-              onPressed: reset,
-            ),
+            duration: Duration(seconds: 2), // Message plus court
           ),
         );
       }
@@ -501,10 +523,10 @@ class _PairsExerciseState extends State<PairsExercise>
               padding: EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: isConnected
-                      ? [Colors.green.shade400, Colors.green.shade600]
-                      : isSelected
+                  colors: isSelected
                       ? [Colors.yellow.shade400, Colors.orange.shade500]
+                      : isConnected
+                      ? [Colors.green.shade400, Colors.green.shade600]
                       : [
                           Colors.white.withOpacity(0.9),
                           Colors.white.withOpacity(0.7),
@@ -524,10 +546,10 @@ class _PairsExerciseState extends State<PairsExercise>
               ),
               child: Row(
                 children: [
-                  if (isConnected)
-                    Icon(Icons.check_circle, color: Colors.white, size: 20)
-                  else if (isSelected)
+                  if (isSelected)
                     Icon(Icons.touch_app, color: Colors.white, size: 20)
+                  else if (isConnected)
+                    Icon(Icons.check_circle, color: Colors.white, size: 20)
                   else
                     Icon(
                       Icons.drag_indicator,
