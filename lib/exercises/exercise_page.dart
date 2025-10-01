@@ -35,7 +35,7 @@ class _ExercisePageState extends State<ExercisePage>
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-    _progressController.forward();
+    if (mounted) _progressController.forward();
   }
 
   @override
@@ -48,20 +48,20 @@ class _ExercisePageState extends State<ExercisePage>
   void nextExercise() async {
     if (currentIndex < widget.exercises.length - 1) {
       // Animate progress update
-      await _progressController.forward();
+      if (mounted) await _progressController.forward();
 
       setState(() {
         currentIndex++;
       });
 
       // Reset and animate for next exercise
-      _progressController.reset();
-      _progressController.forward();
+      if (mounted) _progressController.reset();
+      if (mounted) _progressController.forward();
 
       HapticFeedback.selectionClick();
     } else {
       // All exercises completed - show celebration
-      _celebrationController.forward();
+      if (mounted) _celebrationController.forward();
       HapticFeedback.heavyImpact();
 
       await Future.delayed(const Duration(milliseconds: 500));

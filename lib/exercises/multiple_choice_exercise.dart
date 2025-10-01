@@ -53,7 +53,7 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
         showFeedback = false;
       });
       _controller.reset();
-      _pulseController.reset();
+      if (mounted) _pulseController.reset();
       _controller.forward();
     }
   }
@@ -69,19 +69,19 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
     // Audio et haptic feedback
     if (isCorrect) {
       HapticFeedback.lightImpact();
-      // try {
-      //   await _audioPlayer.play(AssetSource('sounds/correct.mp3'));
-      // } catch (e) {
-      //   print('Audio error: $e');
-      // }
-      _pulseController.forward();
+      try {
+        await _audioPlayer.play(AssetSource('assets/sounds/correct.mp3'));
+      } catch (e) {
+        print('Audio error: $e');
+      }
+      if (mounted) _pulseController.forward();
     } else {
       HapticFeedback.mediumImpact();
-      // try {
-      //   await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
-      // } catch (e) {
-      //   print('Audio error: $e');
-      // }
+      try {
+        await _audioPlayer.play(AssetSource('assets/sounds/wrong.mp3'));
+      } catch (e) {
+        print('Audio error: $e');
+      }
     }
 
     if (isCorrect) {

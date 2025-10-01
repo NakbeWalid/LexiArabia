@@ -56,9 +56,14 @@ class _PairsExerciseState extends State<PairsExercise>
 
   void _initializeExercise() {
     // Debug
+    print('🔍 PairsExercise Debug:');
     print('Exercise type: ${widget.exercise.type}');
     print('Exercise dragDropPairs: ${widget.exercise.dragDropPairs}');
+    print(
+      'Exercise dragDropPairs length: ${widget.exercise.dragDropPairs?.length}',
+    );
     print('Exercise answer: ${widget.exercise.answer}');
+    print('Exercise options: ${widget.exercise.options}');
 
     // Pour les exercices de matching avec pairs
     if (widget.exercise.dragDropPairs != null &&
@@ -99,17 +104,33 @@ class _PairsExerciseState extends State<PairsExercise>
   }
 
   void handleItemTap(String item, bool isLeft) {
-    setState(() {
-      if (isLeft) {
-        // Permettre de sélectionner même les éléments connectés
-        selectedLeftItem = item;
-      } else {
-        // Right item tapped
-        if (selectedLeftItem != null) {
-          _connectItems(selectedLeftItem!, item);
+    print("🎯 handleItemTap called - item: $item, isLeft: $isLeft");
+    print("🎯 Current selectedLeftItem: $selectedLeftItem");
+    print("🎯 Current connectedItems: $connectedItems");
+
+    if (isLeft) {
+      print("🎯 Processing LEFT item tap");
+      // Logique de toggle : si c'est le même élément, on le désélectionne
+      // Sinon, on sélectionne le nouvel élément
+      setState(() {
+        if (selectedLeftItem == item) {
+          print("🎯 Deselecting item: $item");
+          selectedLeftItem = null; // Désélectionner
+        } else {
+          print("🎯 Selecting item: $item");
+          selectedLeftItem = item; // Sélectionner le nouvel élément
         }
+      });
+    } else {
+      print("🎯 Processing RIGHT item tap");
+      // Right item tapped
+      if (selectedLeftItem != null) {
+        print("🎯 Connecting $selectedLeftItem with $item");
+        _connectItems(selectedLeftItem!, item);
+      } else {
+        print("🎯 No left item selected, ignoring right tap");
       }
-    });
+    }
   }
 
   void _connectItems(String leftItem, String rightItem) async {
@@ -143,7 +164,7 @@ class _PairsExerciseState extends State<PairsExercise>
       userPairs[leftItem] = rightItem;
       connectedItems.add(leftItem);
       connectedItems.add(rightItem);
-      selectedLeftItem = null;
+      selectedLeftItem = null; // Remettre à null après connexion
     });
 
     // Vérifie si c'est correct
@@ -152,14 +173,14 @@ class _PairsExerciseState extends State<PairsExercise>
     if (isCorrectPair) {
       HapticFeedback.lightImpact();
       try {
-        await _audioPlayer.play(AssetSource('sounds/correct.mp3'));
+        //await _audioPlayer.play(AssetSource('assets/sounds/correct.mp3'));
       } catch (e) {
         print('Audio error: $e');
       }
     } else {
       HapticFeedback.mediumImpact();
       try {
-        await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
+        //await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
       } catch (e) {
         print('Audio error: $e');
       }
@@ -176,9 +197,10 @@ class _PairsExerciseState extends State<PairsExercise>
       }
 
       if (allCorrect) {
-        _successController.forward();
+        // ✅ TOUTES LES RÉPONSES SONT CORRECTES
+        if (mounted) _successController.forward();
         try {
-          await _audioPlayer.play(AssetSource('sounds/success.mp3'));
+          await _audioPlayer.play(AssetSource('assets/sounds/success.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }
@@ -203,9 +225,17 @@ class _PairsExerciseState extends State<PairsExercise>
           ),
         );
 
+        // Passer à l'exercice suivant après 2 secondes
         Future.delayed(const Duration(milliseconds: 2000), widget.onNext);
       } else {
-        // Afficher un message d'erreur mais permettre de continuer
+        // ❌ CERTAINES RÉPONSES SONT INCORRECTES MAIS ON PASSE QUAND MÊME
+        if (mounted) _successController.forward();
+        try {
+          await _audioPlayer.play(AssetSource('assets/sounds/success.mp3'));
+        } catch (e) {
+          print('Audio error: $e');
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -213,7 +243,7 @@ class _PairsExerciseState extends State<PairsExercise>
                 Icon(Icons.info_outline, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
-                  "Some pairs are wrong. Complete all pairs to finish!",
+                  "Exercise completed! Some pairs were incorrect, but let's continue! 📚",
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                 ),
               ],
@@ -223,9 +253,11 @@ class _PairsExerciseState extends State<PairsExercise>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            duration: Duration(seconds: 2), // Message plus court
           ),
         );
+
+        // Passer à l'exercice suivant même avec des erreurs après 2 secondes
+        Future.delayed(const Duration(milliseconds: 2000), widget.onNext);
       }
     }
   }
@@ -235,7 +267,7 @@ class _PairsExerciseState extends State<PairsExercise>
       _initializeExercise();
     });
     _controller.reset();
-    _successController.reset();
+    if (mounted) _successController.reset();
     _controller.forward();
   }
 
@@ -490,15 +522,17 @@ class _PairsExerciseState extends State<PairsExercise>
               // Connection lines overlay
               if (userPairs.isNotEmpty)
                 Positioned.fill(
-                  child: CustomPaint(
-                    painter: ConnectionLinesPainter(
-                      userPairs: userPairs,
-                      correctPairs: correctPairs,
-                      leftItems: leftItems,
-                      rightItems: rightItems,
-                      context: context,
-                      leftItemKeys: leftItemKeys,
-                      rightItemKeys: rightItemKeys,
+                  child: IgnorePointer(
+                    child: CustomPaint(
+                      painter: ConnectionLinesPainter(
+                        userPairs: userPairs,
+                        correctPairs: correctPairs,
+                        leftItems: leftItems,
+                        rightItems: rightItems,
+                        context: context,
+                        leftItemKeys: leftItemKeys,
+                        rightItemKeys: rightItemKeys,
+                      ),
                     ),
                   ),
                 ),
@@ -513,11 +547,19 @@ class _PairsExerciseState extends State<PairsExercise>
     bool isSelected = selectedLeftItem == item;
     bool isConnected = connectedItems.contains(item);
 
+    print(
+      "🔍 Left Item: $item - isSelected: $isSelected - isConnected: $isConnected",
+    );
+
     return Container(
           key: leftItemKeys[item], // Ajouter la clé
           margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: GestureDetector(
-            onTap: () => handleItemTap(item, true),
+            onTap: () {
+              print("🖱️ Left item tapped: $item");
+              // Permettre de cliquer même si connecté pour changer la connexion
+              handleItemTap(item, true);
+            },
             child: AnimatedContainer(
               duration: Duration(milliseconds: 300),
               padding: EdgeInsets.all(16),
@@ -589,11 +631,19 @@ class _PairsExerciseState extends State<PairsExercise>
     bool isCorrect =
         connectedLeftItem != null && correctPairs[connectedLeftItem] == item;
 
+    print(
+      "🔍 Right Item: $item - isConnected: $isConnected - isCorrect: $isCorrect",
+    );
+
     return Container(
       key: rightItemKeys[item], // Ajouter la clé
       margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: GestureDetector(
-        onTap: () => handleItemTap(item, false),
+        onTap: () {
+          print("🖱️ Right item tapped: $item");
+          // Permettre de cliquer même si connecté pour changer la connexion
+          handleItemTap(item, false);
+        },
         child: AnimatedContainer(
           duration: Duration(milliseconds: 300),
           padding: EdgeInsets.all(16),
@@ -696,10 +746,8 @@ class ConnectionLinesPainter extends CustomPainter {
         // Convertir en coordonnées locales du canvas
         final leftX =
             leftPosition.dx +
-            leftRenderBox.size.width * 0.8; // Position X dans l'élément
-        final rightX =
-            rightPosition.dx +
-            rightRenderBox.size.width * 0.2; // Position X dans l'élément
+            leftRenderBox.size.width * 1; // Position X dans l'élément
+        final rightX = rightPosition.dx; // Position X dans l'élément
         final leftY =
             leftPosition.dy + leftRenderBox.size.height / 2; // Centre Y
         final rightY =
@@ -730,18 +778,6 @@ class ConnectionLinesPainter extends CustomPainter {
         canvas.drawPath(path, paint);
 
         // Ajouter une flèche à la fin
-        final arrowPaint = Paint()
-          ..color = paint.color
-          ..style = PaintingStyle.fill;
-
-        final arrowSize = 8.0;
-        final arrowPath = Path();
-        arrowPath.moveTo(rightX - arrowSize, rightY - arrowSize);
-        arrowPath.lineTo(rightX, rightY);
-        arrowPath.lineTo(rightX - arrowSize, rightY + arrowSize);
-        arrowPath.close();
-
-        canvas.drawPath(arrowPath, arrowPaint);
       }
     }
   }

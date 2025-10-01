@@ -50,13 +50,17 @@ class _AudioExerciseState extends State<AudioExercise>
 
     // Listen to audio player state
     _audioPlayer.onPlayerStateChanged.listen((state) {
-      setState(() {
-        isPlaying = state == PlayerState.playing;
-      });
-      if (state == PlayerState.playing) {
-        _audioController.repeat();
-      } else {
-        _audioController.stop();
+      if (mounted) {
+        setState(() {
+          isPlaying = state == PlayerState.playing;
+        });
+      }
+      if (mounted) {
+        if (state == PlayerState.playing) {
+          _audioController.repeat();
+        } else {
+          _audioController.stop();
+        }
       }
     });
   }
@@ -129,7 +133,8 @@ class _AudioExerciseState extends State<AudioExercise>
   void playAudio() async {
     try {
       if (widget.exercise.audioUrl != null) {
-        await _audioPlayer.play(AssetSource("audio/jannah.mp3"));
+        print("🔍 Playing audio: ${widget.exercise.audioUrl}");
+        await _audioPlayer.play(AssetSource("${widget.exercise.audioUrl}"));
         HapticFeedback.selectionClick();
       }
     } catch (e) {

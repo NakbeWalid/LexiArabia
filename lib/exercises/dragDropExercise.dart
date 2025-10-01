@@ -79,30 +79,13 @@ class _DragDropExerciseState extends State<DragDropExercise>
           widget.exercise.answer ?? '',
         );
 
-        // Créer les slots pour la phrase
-        List<String> words = targetSentence.split(' ');
-        sentenceSlots = List.filled(words.length, null);
-        correctWords = words;
+        // Pour les exercices drag & drop, on crée seulement UN slot pour le mot manquant
+        sentenceSlots = [null]; // Un seul slot vide
+        correctWords = [widget.exercise.answer ?? '']; // Le mot correct
 
-        // Trouver l'index du mot manquant
-        int missingIndex = -1;
-        for (int i = 0; i < words.length; i++) {
-          if (words[i] == widget.exercise.answer) {
-            missingIndex = i;
-            break;
-          }
-        }
-
-        // Si on ne trouve pas le mot, créer un slot vide
-        if (missingIndex == -1) {
-          sentenceSlots = List.filled(words.length + 1, null);
-          correctWords = List.from(words);
-          correctWords.add(widget.exercise.answer ?? '');
-          missingIndex = words.length;
-        }
-
-        // Marquer le slot comme vide (à remplir)
-        sentenceSlots[missingIndex] = null;
+        print("🔍 Drag & Drop initialized:");
+        print("🔍 sentenceSlots: $sentenceSlots");
+        print("🔍 correctWords: $correctWords");
       }
     }
   }
@@ -114,12 +97,13 @@ class _DragDropExerciseState extends State<DragDropExercise>
       _initializeExercise();
       setState(() {});
       _controller.reset();
-      _pulseController.reset();
+      if (mounted) _pulseController.reset();
       _controller.forward();
     }
   }
 
   void handleWordDrop(int index, String word) async {
+    print("JE RENTRE ICI BOGOSSSS");
     setState(() {
       // Pour les exercices avec un seul mot à placer
       if (sentenceSlots.length == 1) {
@@ -136,12 +120,20 @@ class _DragDropExerciseState extends State<DragDropExercise>
     });
 
     // Check if sentence is complete
+    print("🔍 Checking completion:");
+    print("🔍 sentenceSlots: $sentenceSlots");
+    print("🔍 Contains null: ${sentenceSlots.contains(null)}");
+    print("🔍 All filled: ${!sentenceSlots.contains(null)}");
+
     if (!sentenceSlots.contains(null)) {
       bool isCorrect = true;
 
       // Pour les exercices avec un seul mot
       if (sentenceSlots.length == 1) {
         isCorrect = sentenceSlots[0] == widget.exercise.answer;
+        print(
+          '🔍 Single word check: "${sentenceSlots[0]}" == "${widget.exercise.answer}" = $isCorrect',
+        );
       } else {
         // Pour les exercices avec plusieurs mots
         for (int i = 0; i < sentenceSlots.length; i++) {
@@ -150,16 +142,25 @@ class _DragDropExerciseState extends State<DragDropExercise>
             break;
           }
         }
+        print('🔍 Multi-word check: $isCorrect');
+        print('🔍 Sentence slots: $sentenceSlots');
+        print('🔍 Correct words: $correctWords');
       }
 
       if (isCorrect) {
+        // ✅ RÉPONSE CORRECTE
+        Future.delayed(const Duration(milliseconds: 1000), widget.onNext);
+
+        print(
+          '🎉 Exercise completed successfully! Calling onNext in 2 seconds...',
+        );
         HapticFeedback.lightImpact();
         try {
-          await _audioPlayer.play(AssetSource('sounds/correct.mp3'));
+          await _audioPlayer.play(AssetSource('assets/sounds/correct.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }
-        _pulseController.forward();
+        if (mounted) _pulseController.forward();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -181,23 +182,31 @@ class _DragDropExerciseState extends State<DragDropExercise>
           ),
         );
 
-        Future.delayed(const Duration(milliseconds: 2000), widget.onNext);
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          print('🚀 Calling widget.onNext now!');
+          widget.onNext();
+        });
       } else {
+        // ❌ RÉPONSE INCORRECTE MAIS ON PASSE QUAND MÊME
+        print(
+          '⚠️ Exercise completed with wrong answer! Calling onNext in 2 seconds...',
+        );
         HapticFeedback.mediumImpact();
         try {
-          await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
+          await _audioPlayer.play(AssetSource('assets/sounds/wrong.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }
+        if (mounted) _pulseController.forward();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.refresh, color: Colors.white),
+                Icon(Icons.info_outline, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
-                  "Wrong word. Try again!",
+                  "Exercise completed! The answer was incorrect, but let's continue! 📚",
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                 ),
               ],
@@ -207,13 +216,14 @@ class _DragDropExerciseState extends State<DragDropExercise>
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            action: SnackBarAction(
-              label: 'Reset',
-              textColor: Colors.white,
-              onPressed: reset,
-            ),
           ),
         );
+
+        // Passer à l'exercice suivant même avec une réponse incorrecte
+        Future.delayed(const Duration(milliseconds: 2000), () {
+          print('🚀 Calling widget.onNext now (with wrong answer)!');
+          widget.onNext();
+        });
       }
     }
   }
@@ -223,7 +233,7 @@ class _DragDropExerciseState extends State<DragDropExercise>
       _initializeExercise();
     });
     _controller.reset();
-    _pulseController.reset();
+    if (mounted) _pulseController.reset();
     _controller.forward();
   }
 

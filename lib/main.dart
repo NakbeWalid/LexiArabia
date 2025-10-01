@@ -17,11 +17,10 @@ import 'package:dualingocoran/services/language_provider.dart';
 import 'package:dualingocoran/utils/app_localizations.dart';
 import 'dart:math' as math;
 
-/*Future<void> verifierLecons() async {
+Future<void> verifierLecons() async {
   try {
     print("🔍 Vérification des leçons existantes...");
 
-    // Vérifier si des leçons existent déjà
     final snapshot = await FirebaseFirestore.instance
         .collection('lessons')
         .limit(1)
@@ -29,146 +28,114 @@ import 'dart:math' as math;
 
     if (snapshot.docs.isNotEmpty) {
       print(
-        "✅ Des leçons existent déjà dans Firestore (${snapshot.docs.length} trouvées)",
+        "✅ Des leçons existent déjà (${snapshot.docs.length} trouvées). Exemple: ${snapshot.docs.first.data()}",
       );
-      print("📝 Exemple de leçon: ${snapshot.docs.first.data()}");
 
-      // Ajouter la nouvelle leçon sur les pronoms démonstratifs
-      print("📝 Ajout de la leçon: Demonstrative Pronouns 1");
-      await FirebaseFirestore.instance
-          .collection('lessons')
-          .doc('Demonstrative Pronouns 1')
-          .set({
-            "category": "Pronouns",
-            "section": "Basics",
-            "sectionTitle": "Demonstrative Pronouns",
-            "sectionOrder": 1,
-            "lessonOrder": 1,
-            "title": "Demonstrative Pronouns 1 - الضمائر الإشارية",
-            "description":
-                "Learn the basic demonstrative pronouns in Arabic: هذا، هذه، هذان، هؤلاء",
-            "words": [
-              {
-                "word": "هَذَا",
-                "translation": "this (masculine singular)",
-                "description":
-                    "Used to point to a masculine singular object or person that is close to the speaker",
-                "example": "هَذَا كِتَابٌ (This is a book)",
-              },
-              {
-                "word": "هَذَانِ",
-                "translation": "these two (masculine dual)",
-                "description":
-                    "Used to point to two masculine objects or people that are close to the speaker",
-                "example": "هَذَانِ طَالِبَانِ (These are two students)",
-              },
-              {
-                "word": "هَؤُلَاءِ",
-                "translation": "these (plural)",
-                "description":
-                    "Used to point to multiple objects or people (3 or more) that are close to the speaker",
-                "example": "هَؤُلَاءِ طُلَّابٌ (These are students)",
-              },
+      // ➝ Nouvelle leçon : Relative Pronouns
+      print("📝 Ajout de la leçon: Relative Pronouns");
+      await FirebaseFirestore.instance.collection('lessons').doc('Relative Pronouns').set({
+        "category": "Pronouns",
+        "section": "Basics",
+        "sectionTitle": "Relative Pronouns",
+        "sectionOrder": 3,
+        "lessonOrder": 1,
+        "title": "Relative Pronouns – Who, Which, That",
+        "description":
+            "Learn how to use Arabic relative pronouns: الَّذِي, الَّتِي, الَّذِينَ, الَّلَائِي.",
+        "exercises": [
+          {
+            "type": "multiple_choice",
+            "question":
+                "Which relative pronoun is used for: 'The man **who** prays'?",
+            "options": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
+            "answer": "الَّذِي",
+          },
+          {
+            "type": "multiple_choice",
+            "question":
+                "You want to say: 'The woman **who** reads.' What do you use?",
+            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+            "answer": "الَّتِي",
+          },
+          {
+            "type": "multiple_choice",
+            "question":
+                "Pick the correct pronoun: 'Those (men) who believe are successful.'",
+            "options": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
+            "answer": "الَّذِينَ",
+          },
+          {
+            "type": "multiple_choice",
+            "question": "Which one is used for groups of women?",
+            "options": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
+            "answer": "اللَّائِي",
+          },
+          {
+            "type": "drag_drop",
+            "question": "Match the Arabic relative pronoun to its correct use.",
+            "options": [
+              "الَّذِي",
+              "الَّتِي",
+              "الَّذِينَ",
+              "اللَّائِي",
+              "who (masculine)",
+              "who (feminine)",
+              "those who (masc.)",
+              "those who (fem.)",
             ],
-            "exercises": [
-              {
-                "type": "multiple_choice",
-                "question": "What does هَذَا mean?",
-                "options": ["that", "this (masculine singular)", "those", "he"],
-                "answer": "this (masculine singular)",
-              },
-              {
-                "type": "multiple_choice",
-                "question":
-                    "Which one is the correct Arabic for 'these (plural)'?",
-                "options": ["هَذِهِ", "هَذَا", "هَؤُلَاءِ", "ذَلِكَ"],
-                "answer": "هَؤُلَاءِ",
-              },
-              {
-                "type": "true_false",
-                "question":
-                    "هَذِهِ refers to feminine singular or inanimate plural.",
-                "answer": true,
-              },
-              {
-                "type": "true_false",
-                "question": "هَذَانِ is used for three or more items.",
-                "answer": false,
-              },
-              {
-                "type": "pairs",
-                "question": "Match each Arabic pronoun to its English meaning.",
-                "instruction":
-                    "Match each Arabic pronoun to its English meaning.",
-                "pairs": [
-                  {"from": "هَؤُلَاءِ", "to": "these (plural)"},
-                  {"from": "هَذَا", "to": "this (masculine singular)"},
-                  {"from": "هَذَانِ", "to": "these two (masculine dual)"},
-                  {"from": "هَذِهِ", "to": "this (feminine singular)"},
-                ],
-                "options": [
-                  "هَؤُلَاءِ",
-                  "هَذَا",
-                  "هَذَانِ",
-                  "هَذِهِ",
-                  "these (plural)",
-                  "this (masculine singular)",
-                  "these two (masculine dual)",
-                  "this (feminine singular)",
-                ],
-              },
-              {
-                "type": "multiple_choice",
-                "question": "Which is the dual masculine form of 'this'?",
-                "options": ["هَذَانِ", "هَذَا", "هَذِهِ", "هَؤُلَاءِ"],
-                "answer": "هَذَانِ",
-              },
-              {
-                "type": "pairs",
-                "question": "Match each pronoun to the correct gender/number.",
-                "instruction":
-                    "Match each pronoun to the correct gender/number.",
-                "pairs": [
-                  {"from": "هَؤُلَاءِ", "to": "plural"},
-                  {"from": "هَذَا", "to": "masculine singular"},
-                  {"from": "هَذَانِ", "to": "masculine dual"},
-                  {"from": "هَذِهِ", "to": "feminine singular"},
-                ],
-                "options": [
-                  "هَؤُلَاءِ",
-                  "هَذَا",
-                  "هَذَانِ",
-                  "هَذِهِ",
-                  "plural",
-                  "masculine singular",
-                  "masculine dual",
-                  "feminine singular",
-                ],
-              },
-              {
-                "type": "audio_choice",
-                "question": "Listen and choose the correct meaning.",
-                "audioUrl": "audio/hadha.mp3",
-                "options": ["this", "that", "he", "those"],
-                "answer": "this",
-              },
-              {
-                "type": "audio_choice",
-                "question": "Listen and identify the Arabic word.",
-                "audioUrl": "audio/hadhihi.mp3",
-                "options": ["هَذَا", "هَذِهِ", "هَذَانِ", "هَؤُلَاءِ"],
-                "answer": "هَذِهِ",
-              },
-              {
-                "type": "true_false",
-                "question":
-                    "هَؤُلَاءِ is used for both masculine and feminine plural.",
-                "answer": true,
-              },
+            "pairs": [
+              {"from": "الَّذِي", "to": "who (masculine)"},
+              {"from": "الَّتِي", "to": "who (feminine)"},
+              {"from": "الَّذِينَ", "to": "those who (masc.)"},
+              {"from": "اللَّائِي", "to": "those who (fem.)"},
             ],
-          });
+          },
+          {
+            "type": "true_false",
+            "question": "“اللَّائِي” can be used for a group of men.",
+            "answer": false,
+          },
+          {
+            "type": "true_false",
+            "question": "“الَّتِي” is used for singular feminine nouns.",
+            "answer": true,
+          },
+          {
+            "type": "audio_choice",
+            "question": "Which pronoun do you hear?",
+            "audioUrl": "https://example.com/audio/allathi.mp3",
+            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ"],
+            "answer": "الَّذِي",
+          },
+          {
+            "type": "audio_choice",
+            "question": "Listen and choose: what do you hear?",
+            "audioUrl": "https://example.com/audio/allatheena.mp3",
+            "options": ["اللَّائِي", "الَّذِينَ", "الَّتِي"],
+            "answer": "الَّذِينَ",
+          },
+          {
+            "type": "multiple_choice",
+            "question":
+                "Choose the correct full phrase: 'The students **who** study succeed.'",
+            "options": [
+              "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
+              "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+              "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
+              "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
+            ],
+            "answer": "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+          },
+        ],
+        "words": [
+          {"word": "الَّذِي", "translation": "who (masculine)"},
+          {"word": "الَّتِي", "translation": "who (feminine)"},
+          {"word": "الَّذِينَ", "translation": "those who (masc.)"},
+          {"word": "اللَّائِي", "translation": "those who (fem.)"},
+        ],
+      });
 
-      print("✅ Leçon ajoutée avec succès!");
+      print("✅ Leçon 'Negation and Exclusion' ajoutée avec succès!");
     } else {
       print("❌ Aucune leçon trouvée dans Firestore");
     }
@@ -176,7 +143,7 @@ import 'dart:math' as math;
     print("❌ Erreur lors de la vérification/ajout des leçons: $e");
   }
 }
-*/
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -237,6 +204,7 @@ class CoranLinguaApp extends StatelessWidget {
             locale: languageProvider.currentLocale,
             home: MainScreen(),
             debugShowCheckedModeBanner: false,
+            // showPerformanceOverlay: true,
           );
         },
       ),
@@ -1902,12 +1870,32 @@ class ExercisesScreen extends StatelessWidget {
             ],
           });
 
+          print('🧪 Test exercise created:');
+          print('Type: ${testExercise.type}');
+          print('DragDropPairs: ${testExercise.dragDropPairs}');
+          print('DragDropPairs length: ${testExercise.dragDropPairs?.length}');
+
           print(
             '🧪 Test exercise dragDropPairs: ${testExercise.dragDropPairs}',
           );
 
-          // Ajouter l'exercice de test à la liste
-          exercises.add(testExercise);
+          // Test: créer un exercice drag_drop de test
+          final testDragDropExercise = Exercise.fromJson({
+            "type": "drag_drop",
+            "question": "Complete the sentence: هذا ____ (This is a book)",
+            "answer": "كتاب",
+            "options": ["كتاب", "قلم", "مدرسة", "بيت"],
+          });
+
+          print('🧪 Test drag_drop exercise created:');
+          print('Type: ${testDragDropExercise.type}');
+          print('Question: ${testDragDropExercise.question}');
+          print('Answer: ${testDragDropExercise.answer}');
+          print('Options: ${testDragDropExercise.options}');
+
+          // Ajouter les exercices de test au début de la liste pour les tester
+          exercises.insert(0, testExercise);
+          exercises.insert(0, testDragDropExercise);
 
           // Passe la liste d'exercices à la page
           return ExercisePage(exercises: exercises);

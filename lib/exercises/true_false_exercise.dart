@@ -51,7 +51,7 @@ class _TrueFalseExerciseState extends State<TrueFalseExercise>
         showFeedback = false;
       });
       _controller.reset();
-      _pulseController.reset();
+      if (mounted) _pulseController.reset();
       _controller.forward();
     }
   }
@@ -77,15 +77,15 @@ class _TrueFalseExerciseState extends State<TrueFalseExercise>
     if (isCorrect) {
       HapticFeedback.lightImpact();
       // try {
-      //   await _audioPlayer.play(AssetSource('sounds/correct.mp3'));
+      //   await _audioPlayer.play(AssetSource('assets/sounds/correct.mp3'));
       // } catch (e) {
       //   print('Audio error: $e');
       // }
-      _pulseController.forward();
+      if (mounted) _pulseController.forward();
     } else {
       HapticFeedback.mediumImpact();
       // try {
-      //   await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
+      //   await _audioPlayer.play(AssetSource('assets/sounds/wrong.mp3'));
       // } catch (e) {
       //   print('Audio error: $e');
       // }
