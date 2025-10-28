@@ -187,4 +187,52 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get percent => '%';
+
+  @override
+  String get descriptionLabel => 'الوصف:';
+
+  @override
+  String get exampleLabel => 'مثال:';
+
+  @override
+  String get unknownWord => 'كلمة غير معروفة';
+
+  @override
+  String get translationNotAvailable => 'الترجمة غير متاحة';
+
+  @override
+  String get descriptionNotAvailable => 'الوصف غير متاح';
+
+  @override
+  String get exampleNotAvailable => 'المثال غير متاح';
+
+  @override
+  String get unknown => 'غير معروف';
+
+  @override
+  String get continueButton => 'متابعة';
+
+  @override
+  String get streakDays => 'أيام';
+
+  @override
+  String get completedLabel => 'مكتمل';
+
+  @override
+  String get notifications => 'الإشعارات';
+
+  @override
+  String get enableNotifications => 'تفعيل الإشعارات';
+
+  @override
+  String get sound => 'الصوت';
+
+  @override
+  String get enableSound => 'تفعيل الصوت';
+
+  @override
+  String get userSelection => 'اختيار المستخدم';
+
+  @override
+  String get chooseDemoProfile => 'اختر ملف شخصي تجريبي';
 }

@@ -134,24 +134,41 @@ class _AudioExerciseState extends State<AudioExercise>
     try {
       if (widget.exercise.audioUrl != null) {
         print("🔍 Playing audio: ${widget.exercise.audioUrl}");
-        await _audioPlayer.play(AssetSource("${widget.exercise.audioUrl}"));
+
+        // Check if audio is already playing
+        if (_audioPlayer.state == PlayerState.playing) {
+          await _audioPlayer.stop();
+        }
+
+        // Normalize the audio path - remove 'assets/' prefix if present
+        String audioPath = widget.exercise.audioUrl!;
+        if (audioPath.startsWith('assets/')) {
+          audioPath = audioPath.substring(7); // Remove 'assets/' prefix
+        }
+
+        print("🎵 Normalized audio path: $audioPath");
+        await _audioPlayer.play(AssetSource(audioPath));
         HapticFeedback.selectionClick();
+      } else {
+        print("⚠️ audioUrl is null");
       }
     } catch (e) {
+      print("❌ Error playing audio: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
               Icon(Icons.error, color: Colors.white),
               SizedBox(width: 8),
-              Text("Audio not available", style: GoogleFonts.poppins()),
+              Expanded(child: Text("Erreur: $e", style: GoogleFonts.poppins())),
             ],
           ),
-          backgroundColor: Colors.orange.shade600,
+          backgroundColor: Colors.red.shade600,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          duration: Duration(seconds: 3),
         ),
       );
     }

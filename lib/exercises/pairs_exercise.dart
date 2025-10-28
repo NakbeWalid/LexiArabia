@@ -200,7 +200,7 @@ class _PairsExerciseState extends State<PairsExercise>
         // ✅ TOUTES LES RÉPONSES SONT CORRECTES
         if (mounted) _successController.forward();
         try {
-          await _audioPlayer.play(AssetSource('assets/sounds/success.mp3'));
+          await _audioPlayer.play(AssetSource('sounds/success.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }
@@ -231,7 +231,7 @@ class _PairsExerciseState extends State<PairsExercise>
         // ❌ CERTAINES RÉPONSES SONT INCORRECTES MAIS ON PASSE QUAND MÊME
         if (mounted) _successController.forward();
         try {
-          await _audioPlayer.play(AssetSource('assets/sounds/success.mp3'));
+          await _audioPlayer.play(AssetSource('sounds/success.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }

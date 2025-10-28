@@ -156,7 +156,7 @@ class _DragDropExerciseState extends State<DragDropExercise>
         );
         HapticFeedback.lightImpact();
         try {
-          await _audioPlayer.play(AssetSource('assets/sounds/correct.mp3'));
+          await _audioPlayer.play(AssetSource('sounds/success.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }
@@ -193,7 +193,7 @@ class _DragDropExerciseState extends State<DragDropExercise>
         );
         HapticFeedback.mediumImpact();
         try {
-          await _audioPlayer.play(AssetSource('assets/sounds/wrong.mp3'));
+          await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }

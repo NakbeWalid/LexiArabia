@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dualingocoran/exercises/exercise_page.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 
 class LessonPreviewScreen extends StatefulWidget {
   final String lessonTitle;
@@ -13,13 +14,13 @@ class LessonPreviewScreen extends StatefulWidget {
   final String sectionTitle;
 
   const LessonPreviewScreen({
-    Key? key,
+    super.key,
     required this.lessonTitle,
     required this.lessonDescription,
     required this.newWords,
     required this.exercises,
     required this.sectionTitle,
-  }) : super(key: key);
+  });
 
   @override
   State<LessonPreviewScreen> createState() => _LessonPreviewScreenState();
@@ -109,6 +110,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -267,7 +269,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                                       ),
                                     ),
                                     child: Text(
-                                      _getCurrentWord(),
+                                      _getCurrentWord(localizations),
                                       style: GoogleFonts.poppins(
                                         color: Colors.white,
                                         fontSize: 36,
@@ -295,7 +297,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Text(
-                                      _getCurrentWordTranslation(),
+                                      _getCurrentWordTranslation(localizations),
                                       style: GoogleFonts.poppins(
                                         color: Colors.blue.shade100,
                                         fontSize: 18,
@@ -322,7 +324,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                                     child: Column(
                                       children: [
                                         Text(
-                                          'Description:',
+                                          localizations.descriptionLabel,
                                           style: GoogleFonts.poppins(
                                             color: Colors.orange.shade200,
                                             fontSize: 14,
@@ -331,7 +333,9 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          _getCurrentWordDescription(),
+                                          _getCurrentWordDescription(
+                                            localizations,
+                                          ),
                                           style: GoogleFonts.poppins(
                                             color: Colors.orange.shade100,
                                             fontSize: 16,
@@ -360,7 +364,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                                     child: Column(
                                       children: [
                                         Text(
-                                          'Example:',
+                                          localizations.exampleLabel,
                                           style: GoogleFonts.poppins(
                                             color: Colors.green.shade200,
                                             fontSize: 14,
@@ -369,7 +373,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                                         ),
                                         const SizedBox(height: 8),
                                         Text(
-                                          _getCurrentWordExample(),
+                                          _getCurrentWordExample(localizations),
                                           style: GoogleFonts.poppins(
                                             color: Colors.green.shade100,
                                             fontSize: 16,
@@ -490,7 +494,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                       ],
                     ),
                     child: Text(
-                      'Start Lesson',
+                      localizations.startLesson,
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 18,
@@ -509,44 +513,49 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
   }
 
   // Méthodes pour gérer la nouvelle structure des mots
-  String _getCurrentWord() {
+  String _getCurrentWord(AppLocalizations localizations) {
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['word'] ?? 'Unknown word';
+      return currentWord['word'] ?? localizations.unknownWord;
     } else if (currentWord is String) {
       return currentWord;
     }
-    return 'Unknown word';
+    return localizations.unknownWord;
   }
 
-  String _getCurrentWordTranslation() {
+  String _getCurrentWordTranslation(AppLocalizations localizations) {
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['translation'] ?? 'Translation not available';
+      return currentWord['translation'] ??
+          localizations.translationNotAvailable;
     } else if (currentWord is String) {
       // Fallback vers l'ancienne méthode pour la compatibilité
-      return _getWordTranslation(currentWord);
+      return _getWordTranslation(currentWord, localizations);
     }
-    return 'Translation not available';
+    return localizations.translationNotAvailable;
   }
 
-  String _getCurrentWordDescription() {
+  String _getCurrentWordDescription(AppLocalizations localizations) {
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['description'] ?? 'Description not available';
+      return currentWord['description'] ??
+          localizations.descriptionNotAvailable;
     }
-    return 'Description not available';
+    return localizations.descriptionNotAvailable;
   }
 
-  String _getCurrentWordExample() {
+  String _getCurrentWordExample(AppLocalizations localizations) {
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['example'] ?? 'Example not available';
+      return currentWord['example'] ?? localizations.exampleNotAvailable;
+    } else if (currentWord is String) {
+      // Fallback vers l'ancienne méthode pour la compatibilité
+      return _getWordExample(currentWord);
     }
-    return 'Example not available';
+    return localizations.exampleNotAvailable;
   }
 
-  String _getWordTranslation(String word) {
+  String _getWordTranslation(String word, AppLocalizations localizations) {
     // Dictionnaire des traductions pour les mots de négation
     final translations = {
       'لَنْ': 'will not (future negation)',
@@ -571,7 +580,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
       'خَارِجَ': 'outside',
     };
 
-    return translations[word] ?? 'New word to learn';
+    return translations[word] ?? localizations.newWordsToLearn;
   }
 
   String _getWordExample(String word) {
@@ -602,6 +611,6 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
           'الأَطْفَالُ خَارِجَ البَيْتِ (The children are outside the house)',
     };
 
-    return examples[word] ?? 'Practice using this word in sentences';
+    return examples[word] ?? '';
   }
 }

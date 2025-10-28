@@ -3,12 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/user_provider.dart';
 import 'package:dualingocoran/main.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 
 class UserSelectionScreen extends StatelessWidget {
-  const UserSelectionScreen({Key? key}) : super(key: key);
+  const UserSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -33,7 +35,7 @@ class UserSelectionScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     Text(
-                      'Sélection d\'Utilisateur',
+                      localizations.userSelection,
                       style: GoogleFonts.poppins(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -42,7 +44,7 @@ class UserSelectionScreen extends StatelessWidget {
                     ),
                     SizedBox(height: 10),
                     Text(
-                      'Choisissez un profil de démonstration',
+                      localizations.chooseDemoProfile,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         color: Colors.white.withOpacity(0.8),
@@ -57,14 +59,14 @@ class UserSelectionScreen extends StatelessWidget {
                 child: Consumer<UserProvider>(
                   builder: (context, userProvider, child) {
                     final demoUserIds = userProvider.getAvailableDemoUserIds();
-                    
+
                     return ListView.builder(
                       padding: EdgeInsets.symmetric(horizontal: 20),
                       itemCount: demoUserIds.length,
                       itemBuilder: (context, index) {
                         final userId = demoUserIds[index];
                         final userInfo = _getUserInfo(userId);
-                        
+
                         return Container(
                           margin: EdgeInsets.only(bottom: 16),
                           child: Material(
@@ -131,13 +133,14 @@ class UserSelectionScreen extends StatelessWidget {
                                         ),
                                       ),
                                     ),
-                                    
+
                                     SizedBox(width: 16),
-                                    
+
                                     // Informations utilisateur
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             userInfo['displayName'],
@@ -152,7 +155,9 @@ class UserSelectionScreen extends StatelessWidget {
                                             userInfo['bio'],
                                             style: GoogleFonts.poppins(
                                               fontSize: 14,
-                                              color: Colors.white.withOpacity(0.7),
+                                              color: Colors.white.withOpacity(
+                                                0.7,
+                                              ),
                                             ),
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
@@ -160,17 +165,26 @@ class UserSelectionScreen extends StatelessWidget {
                                           SizedBox(height: 8),
                                           Row(
                                             children: [
-                                              _buildStatChip('Niveau ${userInfo['level']}', Colors.amber),
+                                              _buildStatChip(
+                                                'Niveau ${userInfo['level']}',
+                                                Colors.amber,
+                                              ),
                                               SizedBox(width: 8),
-                                              _buildStatChip('${userInfo['xp']} XP', Colors.purple),
+                                              _buildStatChip(
+                                                '${userInfo['xp']} XP',
+                                                Colors.purple,
+                                              ),
                                               SizedBox(width: 8),
-                                              _buildStatChip('${userInfo['streak']} jours', Colors.orange),
+                                              _buildStatChip(
+                                                '${userInfo['streak']} jours',
+                                                Colors.orange,
+                                              ),
                                             ],
                                           ),
                                         ],
                                       ),
                                     ),
-                                    
+
                                     // Flèche
                                     Icon(
                                       Icons.arrow_forward_ios,
@@ -287,13 +301,14 @@ class UserSelectionScreen extends StatelessWidget {
         'streak': 14,
       },
     };
-    
-    return userInfoMap[userId] ?? {
-      'displayName': 'Unknown',
-      'bio': 'Utilisateur inconnu',
-      'level': 1,
-      'xp': 0,
-      'streak': 0,
-    };
+
+    return userInfoMap[userId] ??
+        {
+          'displayName': 'Unknown',
+          'bio': 'Utilisateur inconnu',
+          'level': 1,
+          'xp': 0,
+          'streak': 0,
+        };
   }
 }

@@ -14,7 +14,7 @@ class UserAvatar extends StatelessWidget {
   final VoidCallback? onTap;
 
   const UserAvatar({
-    Key? key,
+    super.key,
     this.displayName,
     this.avatarUrl,
     this.size = 60.0,
@@ -24,13 +24,13 @@ class UserAvatar extends StatelessWidget {
     this.borderColor,
     this.borderWidth = 2.0,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBackgroundColor = backgroundColor ?? 
-        _generateColorFromName(displayName ?? 'User');
-    
+    final effectiveBackgroundColor =
+        backgroundColor ?? _generateColorFromName(displayName ?? 'User');
+
     final effectiveTextColor = textColor ?? AppTheme.textPrimaryColor;
 
     Widget avatarWidget = Container(
@@ -46,15 +46,15 @@ class UserAvatar extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         shape: BoxShape.circle,
-        border: showBorder ? Border.all(
-          color: borderColor ?? AppTheme.primaryColor,
-          width: borderWidth,
-        ) : null,
+        border: showBorder
+            ? Border.all(
+                color: borderColor ?? AppTheme.primaryColor,
+                width: borderWidth,
+              )
+            : null,
         boxShadow: AppTheme.cardShadow,
       ),
-      child: Center(
-        child: _buildAvatarContent(effectiveTextColor),
-      ),
+      child: Center(child: _buildAvatarContent(effectiveTextColor)),
     );
 
     if (onTap != null) {
@@ -105,18 +105,18 @@ class UserAvatar extends StatelessWidget {
 
   String _getInitials(String name) {
     if (name.isEmpty) return 'U';
-    
+
     final parts = name.trim().split(' ');
     if (parts.length == 1) {
       return name[0].toUpperCase();
     }
-    
+
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
   Color _generateColorFromName(String name) {
     if (name.isEmpty) return AppTheme.primaryColor;
-    
+
     final colors = [
       AppTheme.primaryColor,
       AppTheme.secondaryColor,
@@ -129,7 +129,7 @@ class UserAvatar extends StatelessWidget {
       Colors.teal.shade400,
       Colors.indigo.shade400,
     ];
-    
+
     final hash = name.hashCode;
     return colors[hash.abs() % colors.length];
   }
@@ -141,12 +141,7 @@ class SmallAvatar extends StatelessWidget {
   final String? avatarUrl;
   final VoidCallback? onTap;
 
-  const SmallAvatar({
-    Key? key,
-    this.displayName,
-    this.avatarUrl,
-    this.onTap,
-  }) : super(key: key);
+  const SmallAvatar({super.key, this.displayName, this.avatarUrl, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -164,12 +159,7 @@ class MediumAvatar extends StatelessWidget {
   final String? avatarUrl;
   final VoidCallback? onTap;
 
-  const MediumAvatar({
-    Key? key,
-    this.displayName,
-    this.avatarUrl,
-    this.onTap,
-  }) : super(key: key);
+  const MediumAvatar({super.key, this.displayName, this.avatarUrl, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -187,12 +177,7 @@ class LargeAvatar extends StatelessWidget {
   final String? avatarUrl;
   final VoidCallback? onTap;
 
-  const LargeAvatar({
-    Key? key,
-    this.displayName,
-    this.avatarUrl,
-    this.onTap,
-  }) : super(key: key);
+  const LargeAvatar({super.key, this.displayName, this.avatarUrl, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -213,13 +198,13 @@ class AvatarWithStatus extends StatelessWidget {
   final VoidCallback? onTap;
 
   const AvatarWithStatus({
-    Key? key,
+    super.key,
     this.displayName,
     this.avatarUrl,
     this.isOnline = false,
     this.size = 60.0,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

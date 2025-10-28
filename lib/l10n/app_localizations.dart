@@ -459,6 +459,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'%'**
   String get percent;
+
+  /// No description provided for @descriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description:'**
+  String get descriptionLabel;
+
+  /// No description provided for @exampleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Example:'**
+  String get exampleLabel;
+
+  /// No description provided for @unknownWord.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown word'**
+  String get unknownWord;
+
+  /// No description provided for @translationNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Translation not available'**
+  String get translationNotAvailable;
+
+  /// No description provided for @descriptionNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Description not available'**
+  String get descriptionNotAvailable;
+
+  /// No description provided for @exampleNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Example not available'**
+  String get exampleNotAvailable;
+
+  /// No description provided for @unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get unknown;
+
+  /// No description provided for @continueButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get continueButton;
+
+  /// No description provided for @streakDays.
+  ///
+  /// In en, this message translates to:
+  /// **'days'**
+  String get streakDays;
+
+  /// No description provided for @completedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'completed'**
+  String get completedLabel;
+
+  /// No description provided for @notifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notifications;
+
+  /// No description provided for @enableNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Notifications'**
+  String get enableNotifications;
+
+  /// No description provided for @sound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get sound;
+
+  /// No description provided for @enableSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Sound'**
+  String get enableSound;
+
+  /// No description provided for @userSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'User Selection'**
+  String get userSelection;
+
+  /// No description provided for @chooseDemoProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a demo profile'**
+  String get chooseDemoProfile;
 }
 
 class _AppLocalizationsDelegate

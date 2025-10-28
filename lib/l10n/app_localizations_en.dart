@@ -187,4 +187,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get percent => '%';
+
+  @override
+  String get descriptionLabel => 'Description:';
+
+  @override
+  String get exampleLabel => 'Example:';
+
+  @override
+  String get unknownWord => 'Unknown word';
+
+  @override
+  String get translationNotAvailable => 'Translation not available';
+
+  @override
+  String get descriptionNotAvailable => 'Description not available';
+
+  @override
+  String get exampleNotAvailable => 'Example not available';
+
+  @override
+  String get unknown => 'Unknown';
+
+  @override
+  String get continueButton => 'Continue';
+
+  @override
+  String get streakDays => 'days';
+
+  @override
+  String get completedLabel => 'completed';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get enableNotifications => 'Enable Notifications';
+
+  @override
+  String get sound => 'Sound';
+
+  @override
+  String get enableSound => 'Enable Sound';
+
+  @override
+  String get userSelection => 'User Selection';
+
+  @override
+  String get chooseDemoProfile => 'Choose a demo profile';
 }

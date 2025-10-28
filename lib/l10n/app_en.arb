@@ -58,5 +58,22 @@
   "streak30Days": "30 Day Streak",
   "hundredPercentAccuracy": "100% Accuracy",
   "days": "days",
-  "percent": "%"
+  "percent": "%",
+  "descriptionLabel": "Description:",
+  "exampleLabel": "Example:",
+  "unknownWord": "Unknown word",
+  "translationNotAvailable": "Translation not available",
+  "descriptionNotAvailable": "Description not available",
+  "exampleNotAvailable": "Example not available",
+  "unknown": "Unknown",
+  "continueButton": "Continue",
+  "streakDays": "days",
+  "completedLabel": "completed",
+  "notifications": "Notifications",
+  "enableNotifications": "Enable Notifications",
+  "sound": "Sound",
+  "enableSound": "Enable Sound",
+  "userSelection": "User Selection",
+  "chooseDemoProfile": "Choose a demo profile",
+  "startLesson": "Start Lesson"
 }

@@ -15,7 +15,7 @@ class CustomCard extends StatelessWidget {
   final Border? border;
 
   const CustomCard({
-    Key? key,
+    super.key,
     required this.child,
     this.margin,
     this.padding,
@@ -27,7 +27,7 @@ class CustomCard extends StatelessWidget {
     this.borderRadius = AppTheme.borderRadiusLarge,
     this.onTap,
     this.border,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +37,16 @@ class CustomCard extends StatelessWidget {
       padding: padding ?? const EdgeInsets.all(AppTheme.spacingM),
       decoration: BoxDecoration(
         gradient: useGradient ? AppTheme.cardGradient : null,
-        color: useGradient ? null : (backgroundColor ?? AppTheme.cardBackgroundColor),
+        color: useGradient
+            ? null
+            : (backgroundColor ?? AppTheme.cardBackgroundColor),
         borderRadius: BorderRadius.circular(borderRadius),
-        border: border ?? Border.all(
-          color: AppTheme.textMutedColor.withOpacity(0.2),
-          width: 1,
-        ),
+        border:
+            border ??
+            Border.all(
+              color: AppTheme.textMutedColor.withOpacity(0.2),
+              width: 1,
+            ),
         boxShadow: showShadow ? AppTheme.cardShadow : null,
       ),
       child: child,
@@ -73,14 +77,14 @@ class InfoCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
 
   const InfoCard({
-    Key? key,
+    super.key,
     required this.title,
     this.subtitle,
     this.leading,
     this.trailing,
     this.onTap,
     this.padding,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -134,14 +138,14 @@ class StatCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const StatCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.value,
     this.icon,
     this.iconColor,
     this.valueColor,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -154,11 +158,7 @@ class StatCard extends StatelessWidget {
           Row(
             children: [
               if (icon != null) ...[
-                Icon(
-                  icon,
-                  color: iconColor ?? AppTheme.primaryColor,
-                  size: 24,
-                ),
+                Icon(icon, color: iconColor ?? AppTheme.primaryColor, size: 24),
                 const SizedBox(width: AppTheme.spacingS),
               ],
               Expanded(
@@ -193,13 +193,13 @@ class ProgressCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const ProgressCard({
-    Key? key,
+    super.key,
     required this.title,
     required this.progress,
     this.subtitle,
     this.progressColor,
     this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -209,16 +209,10 @@ class ProgressCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
           if (subtitle != null) ...[
             const SizedBox(height: AppTheme.spacingS),
-            Text(
-              subtitle!,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium),
           ],
           const SizedBox(height: AppTheme.spacingM),
           LinearProgressIndicator(
@@ -232,9 +226,9 @@ class ProgressCard extends StatelessWidget {
           const SizedBox(height: AppTheme.spacingS),
           Text(
             '${(progress * 100).toInt()}%',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: AppTheme.textSecondaryColor,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondaryColor),
           ),
         ],
       ),

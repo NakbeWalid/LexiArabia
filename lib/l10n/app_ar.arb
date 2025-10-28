@@ -58,5 +58,22 @@
   "streak30Days": "خط متواصل 30 يوم",
   "hundredPercentAccuracy": "دقة 100%",
   "days": "أيام",
-  "percent": "%"
+  "percent": "%",
+  "descriptionLabel": "الوصف:",
+  "exampleLabel": "مثال:",
+  "unknownWord": "كلمة غير معروفة",
+  "translationNotAvailable": "الترجمة غير متاحة",
+  "descriptionNotAvailable": "الوصف غير متاح",
+  "exampleNotAvailable": "المثال غير متاح",
+  "unknown": "غير معروف",
+  "continueButton": "متابعة",
+  "streakDays": "أيام",
+  "completedLabel": "مكتمل",
+  "notifications": "الإشعارات",
+  "enableNotifications": "تفعيل الإشعارات",
+  "sound": "الصوت",
+  "enableSound": "تفعيل الصوت",
+  "userSelection": "اختيار المستخدم",
+  "chooseDemoProfile": "اختر ملف شخصي تجريبي",
+  "startLesson": "ابدأ الدرس"
 }

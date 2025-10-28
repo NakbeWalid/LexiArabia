@@ -3,10 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
-import 'package:dualingocoran/utils/app_localizations.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -17,8 +17,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Consumer<LanguageProvider>(
       builder: (context, languageProvider, child) {
-        final localizations = AppLocalizations(languageProvider.currentLocale);
-        
+        final localizations = AppLocalizations.of(context)!;
+
         return Scaffold(
           body: Container(
             decoration: BoxDecoration(
@@ -49,7 +49,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         SizedBox(width: 16),
                         Text(
-                          localizations.get('settings'),
+                          localizations.settings,
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontSize: 28,
@@ -59,30 +59,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ],
                     ),
                     SizedBox(height: 40),
-                    
+
                     // Section Langue
-                    _buildSectionHeader(localizations.get('language')),
+                    _buildSectionHeader(localizations.language),
                     SizedBox(height: 20),
-                    
+
                     // Sélecteur de langue
                     _buildLanguageSelector(languageProvider, localizations),
-                    
+
                     SizedBox(height: 40),
-                    
+
                     // Autres paramètres peuvent être ajoutés ici
-                    _buildSectionHeader('Notifications'),
+                    _buildSectionHeader(localizations.notifications),
                     SizedBox(height: 20),
-                    _buildSwitchTile('Activer les notifications', true),
-                    
+                    _buildSwitchTile(localizations.enableNotifications, true),
+
                     SizedBox(height: 20),
-                    _buildSectionHeader('Son'),
+                    _buildSectionHeader(localizations.sound),
                     SizedBox(height: 20),
-                    _buildSwitchTile('Activer le son', true),
-                    
+                    _buildSwitchTile(localizations.enableSound, true),
+
                     Spacer(),
-                    
+
                     // Bouton de sauvegarde
-                    Container(
+                    SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
@@ -120,7 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       },
     );
   }
-  
+
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
@@ -131,17 +131,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-  
-  Widget _buildLanguageSelector(LanguageProvider languageProvider, AppLocalizations localizations) {
+
+  Widget _buildLanguageSelector(
+    LanguageProvider languageProvider,
+    AppLocalizations localizations,
+  ) {
     final languages = [
-      {'code': 'en', 'name': localizations.get('english'), 'flag': '🇺🇸'},
-      {'code': 'fr', 'name': localizations.get('french'), 'flag': '🇫🇷'},
-      {'code': 'ar', 'name': localizations.get('arabic'), 'flag': '🇸🇦'},
+      {'code': 'en', 'name': localizations.english, 'flag': '🇺🇸'},
+      {'code': 'fr', 'name': localizations.french, 'flag': '🇫🇷'},
+      {'code': 'ar', 'name': localizations.arabic, 'flag': '🇸🇦'},
     ];
-    
+
     return Column(
       children: languages.map((language) {
-        final isSelected = languageProvider.getCurrentLanguageCode() == language['code'];
+        final isSelected =
+            languageProvider.getCurrentLanguageCode() == language['code'];
         return Container(
           margin: EdgeInsets.only(bottom: 12),
           child: Material(
@@ -152,12 +156,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isSelected 
+                  color: isSelected
                       ? Color(0xFFD4AF37).withOpacity(0.2)
                       : Colors.white.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isSelected 
+                    color: isSelected
                         ? Color(0xFFD4AF37)
                         : Colors.white.withOpacity(0.2),
                     width: 1,
@@ -165,10 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 child: Row(
                   children: [
-                    Text(
-                      language['flag']!,
-                      style: TextStyle(fontSize: 24),
-                    ),
+                    Text(language['flag']!, style: TextStyle(fontSize: 24)),
                     SizedBox(width: 16),
                     Expanded(
                       child: Text(
@@ -176,7 +177,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontSize: 16,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -195,27 +198,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }).toList(),
     );
   }
-  
+
   Widget _buildSwitchTile(String title, bool value) {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             title,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 16,
-            ),
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 16),
           ),
           Switch(
             value: value,

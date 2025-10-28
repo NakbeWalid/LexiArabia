@@ -187,4 +187,52 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get percent => '%';
+
+  @override
+  String get descriptionLabel => 'Description :';
+
+  @override
+  String get exampleLabel => 'Exemple :';
+
+  @override
+  String get unknownWord => 'Mot inconnu';
+
+  @override
+  String get translationNotAvailable => 'Traduction non disponible';
+
+  @override
+  String get descriptionNotAvailable => 'Description non disponible';
+
+  @override
+  String get exampleNotAvailable => 'Exemple non disponible';
+
+  @override
+  String get unknown => 'Inconnu';
+
+  @override
+  String get continueButton => 'Continuer';
+
+  @override
+  String get streakDays => 'jours';
+
+  @override
+  String get completedLabel => 'complété';
+
+  @override
+  String get notifications => 'Notifications';
+
+  @override
+  String get enableNotifications => 'Activer les notifications';
+
+  @override
+  String get sound => 'Son';
+
+  @override
+  String get enableSound => 'Activer le son';
+
+  @override
+  String get userSelection => 'Sélection d\'Utilisateur';
+
+  @override
+  String get chooseDemoProfile => 'Choisissez un profil de démonstration';
 }

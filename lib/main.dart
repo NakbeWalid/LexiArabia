@@ -14,7 +14,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
-import 'package:dualingocoran/utils/app_localizations.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'dart:math' as math;
 
 Future<void> verifierLecons() async {
@@ -35,44 +35,39 @@ Future<void> verifierLecons() async {
       print("📝 Ajout de la leçon: Relative Pronouns");
       await FirebaseFirestore.instance.collection('lessons').doc('Relative Pronouns').set({
         "category": "Pronouns",
-        "section": "Basics",
-        "sectionTitle": "Relative Pronouns",
-        "sectionOrder": 3,
-        "lessonOrder": 1,
-        "title": "Relative Pronouns – Who, Which, That",
         "description":
-            "Learn how to use Arabic relative pronouns: الَّذِي, الَّتِي, الَّذِينَ, الَّلَائِي.",
+            "Learn how to use Arabic relative pronouns: الَّذِي, الَّتِي, الَّذِينَ, اللَّائِي.",
         "exercises": [
           {
-            "type": "multiple_choice",
+            "answer": "الَّذِي",
+            "options": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
             "question":
                 "Which relative pronoun is used for: 'The man **who** prays'?",
-            "options": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
-            "answer": "الَّذِي",
+            "type": "multiple_choice",
           },
           {
-            "type": "multiple_choice",
+            "answer": "الَّتِي",
+            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
             "question":
                 "You want to say: 'The woman **who** reads.' What do you use?",
-            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-            "answer": "الَّتِي",
+            "type": "multiple_choice",
           },
           {
-            "type": "multiple_choice",
+            "answer": "الَّذِينَ",
+            "options": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
             "question":
                 "Pick the correct pronoun: 'Those (men) who believe are successful.'",
-            "options": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
-            "answer": "الَّذِينَ",
-          },
-          {
             "type": "multiple_choice",
-            "question": "Which one is used for groups of women?",
-            "options": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
-            "answer": "اللَّائِي",
           },
           {
-            "type": "drag_drop",
-            "question": "Match the Arabic relative pronoun to its correct use.",
+            "answer": "اللَّائِي",
+            "options": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
+            "question": "Which one is used for groups of women?",
+            "type": "multiple_choice",
+          },
+          {
+            "instruction":
+                "Match the Arabic relative pronoun to its correct use.",
             "options": [
               "الَّذِي",
               "الَّتِي",
@@ -89,49 +84,77 @@ Future<void> verifierLecons() async {
               {"from": "الَّذِينَ", "to": "those who (masc.)"},
               {"from": "اللَّائِي", "to": "those who (fem.)"},
             ],
+            "question": "Match the Arabic relative pronoun to its correct use.",
+            "type": "pairs",
           },
           {
-            "type": "true_false",
-            "question": "“اللَّائِي” can be used for a group of men.",
             "answer": false,
-          },
-          {
+            "question": "“اللَّائِي” can be used for a group of men.",
             "type": "true_false",
-            "question": "“الَّتِي” is used for singular feminine nouns.",
+          },
+          {
             "answer": true,
+            "question": "“الَّتِي” is used for singular feminine nouns.",
+            "type": "true_false",
           },
           {
-            "type": "audio_choice",
-            "question": "Which pronoun do you hear?",
-            "audioUrl": "https://example.com/audio/allathi.mp3",
-            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ"],
             "answer": "الَّذِي",
-          },
-          {
+            "audioUrl": "audio/allathi.mp3",
+            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+            "question": "Which pronoun do you hear?",
             "type": "audio_choice",
-            "question": "Listen and choose: what do you hear?",
-            "audioUrl": "https://example.com/audio/allatheena.mp3",
-            "options": ["اللَّائِي", "الَّذِينَ", "الَّتِي"],
-            "answer": "الَّذِينَ",
           },
           {
-            "type": "multiple_choice",
-            "question":
-                "Choose the correct full phrase: 'The students **who** study succeed.'",
+            "answer": "الَّذِينَ",
+            "audioUrl": "audio/allatheena.mp3",
+            "options": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
+            "question": "Listen and choose: what do you hear?",
+            "type": "audio_choice",
+          },
+          {
+            "answer": "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
             "options": [
               "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
               "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
               "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
               "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
             ],
-            "answer": "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+            "question":
+                "Choose the correct full phrase: 'The students **who** study succeed.'",
+            "type": "multiple_choice",
           },
         ],
+        "lessonOrder": 1,
+        "section": "Basics",
+        "sectionOrder": 3,
+        "sectionTitle": "Relative Pronouns",
+        "title": "Relative Pronouns – Who, Which, That",
         "words": [
-          {"word": "الَّذِي", "translation": "who (masculine)"},
-          {"word": "الَّتِي", "translation": "who (feminine)"},
-          {"word": "الَّذِينَ", "translation": "those who (masc.)"},
-          {"word": "اللَّائِي", "translation": "those who (fem.)"},
+          {
+            "word": "الَّذِي",
+            "translation": "who (masculine)",
+            "description": "Used for singular masculine nouns.",
+            "example": "الرجلُ الَّذِي يُصَلِّي (The man who prays)",
+          },
+          {
+            "word": "الَّتِي",
+            "translation": "who (feminine)",
+            "description": "Used for singular feminine nouns.",
+            "example": "المرأةُ الَّتِي تَقرَأُ (The woman who reads)",
+          },
+          {
+            "word": "الَّذِينَ",
+            "translation": "those who (masc.)",
+            "description": "Used for plural masculine nouns.",
+            "example":
+                "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (The students who study)",
+          },
+          {
+            "word": "اللَّائِي",
+            "translation": "those who (fem.)",
+            "description": "Used for plural feminine nouns.",
+            "example": "النِّسَاءُ اللَّائِي يُصَلِّينَ (The women who pray)",
+          },
         ],
       });
 
@@ -194,11 +217,8 @@ class CoranLinguaApp extends StatelessWidget {
               ),
             ),
             // Configuration de l'internationalisation
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-              AppLocalizationsDelegate(),
+            localizationsDelegates: [
+              ...AppLocalizations.localizationsDelegates,
             ],
             supportedLocales: AppLocalizations.supportedLocales,
             locale: languageProvider.currentLocale,
@@ -273,13 +293,34 @@ class _MainScreenState extends State<MainScreen> {
                 size: isSelected ? 22 : 20,
               ),
               SizedBox(height: 2),
-              Consumer<LanguageProvider>(
-                builder: (context, languageProvider, child) {
-                  final localizations = AppLocalizations(
-                    languageProvider.currentLocale,
-                  );
+              Builder(
+                builder: (context) {
+                  final localizations = AppLocalizations.of(context)!;
+
+                  // Mapping des clés vers les getters
+                  String label;
+                  switch (labelKey) {
+                    case 'lessons':
+                      label = localizations.lessons;
+                      break;
+                    case 'exercises':
+                      label = localizations.exercises;
+                      break;
+                    case 'progression':
+                      label = localizations.progression;
+                      break;
+                    case 'profile':
+                      label = localizations.profile;
+                      break;
+                    case 'settings':
+                      label = localizations.settings;
+                      break;
+                    default:
+                      label = labelKey;
+                  }
+
                   return Text(
-                    localizations.get(labelKey),
+                    label,
                     style: GoogleFonts.poppins(
                       color: isSelected
                           ? Colors.white
@@ -357,7 +398,7 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
   List<QueryDocumentSnapshot> _lessons = [];
   List<Map<String, dynamic>> _sections = [];
   String _currentSection = '';
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   List<Animation<double>> _bubbleAnimations = [];
 
   @override
@@ -1153,7 +1194,7 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
               data['completed'] == true,
               data['started'] == true,
             );
-          }).toList(),
+          }),
 
           // Effets de particules flottantes
           _buildFloatingParticles(),

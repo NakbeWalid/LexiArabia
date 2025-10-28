@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'dart:math' as math;
 
 class ProfilScreen extends StatefulWidget {
@@ -484,7 +482,7 @@ class _ProfilScreenState extends State<ProfilScreen>
         ),
         SizedBox(height: 16),
 
-        Container(
+        SizedBox(
           height: 120,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
