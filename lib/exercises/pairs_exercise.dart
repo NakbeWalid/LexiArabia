@@ -39,6 +39,9 @@ class _PairsExerciseState extends State<PairsExercise>
   Map<String, GlobalKey> leftItemKeys = {};
   Map<String, GlobalKey> rightItemKeys = {};
 
+  // Flag pour savoir si on a déjà initialisé les traductions
+  bool _translationsInitialized = false;
+
   @override
   void initState() {
     super.initState();
@@ -77,6 +80,7 @@ class _PairsExerciseState extends State<PairsExercise>
       leftItemKeys.clear();
       rightItemKeys.clear();
 
+      // Utiliser dragDropPairs sans traduction (traduction se fera dans build)
       for (var pair in widget.exercise.dragDropPairs!) {
         final from = pair['from']?.toString() ?? '';
         final to = pair['to']?.toString() ?? '';
@@ -94,10 +98,49 @@ class _PairsExerciseState extends State<PairsExercise>
     }
   }
 
+  // Méthode pour obtenir les pairs traduites avec context
+  void _updateTranslatedPairs() {
+    // Ne faire la traduction qu'une seule fois
+    if (_translationsInitialized) return;
+
+    if (widget.exercise.dragDropPairs != null &&
+        widget.exercise.dragDropPairs!.isNotEmpty) {
+      final translatedPairs = widget.exercise.getTranslatedPairs(context);
+
+      if (translatedPairs != null && translatedPairs.isNotEmpty) {
+        // Mettre à jour les items avec les traductions
+        leftItems.clear();
+        rightItems.clear();
+        correctPairs.clear();
+        leftItemKeys.clear();
+        rightItemKeys.clear();
+
+        for (var pair in translatedPairs) {
+          final from = pair['from']?.toString() ?? '';
+          final to = pair['to']?.toString() ?? '';
+          if (from.isNotEmpty && to.isNotEmpty) {
+            correctPairs[from] = to;
+            leftItems.add(from);
+            rightItems.add(to);
+            leftItemKeys[from] = GlobalKey();
+            rightItemKeys[to] = GlobalKey();
+          }
+        }
+
+        // Mélanger après avoir ajouté tous les items
+        leftItems.shuffle();
+        rightItems.shuffle();
+
+        _translationsInitialized = true;
+      }
+    }
+  }
+
   @override
   void didUpdateWidget(covariant PairsExercise oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exercise != widget.exercise) {
+      _translationsInitialized = false; // Réinitialiser pour le nouvel exercice
       _initializeExercise();
       setState(() {});
     }
@@ -281,6 +324,9 @@ class _PairsExerciseState extends State<PairsExercise>
 
   @override
   Widget build(BuildContext context) {
+    // Mettre à jour les pairs traduites maintenant qu'on a accès au context
+    _updateTranslatedPairs();
+
     // Check if we have valid exercise data
     if (widget.exercise.dragDropPairs == null ||
         widget.exercise.dragDropPairs!.isEmpty) {

@@ -58,13 +58,15 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
     }
   }
 
-  void checkAnswer(String option) async {
+  void checkAnswer(String option, BuildContext context) async {
     setState(() {
       selectedOption = option;
       showFeedback = true;
     });
 
-    final isCorrect = option == widget.exercise.answer;
+    // Comparer avec la version traduite de la réponse
+    final translatedAnswer = widget.exercise.getTranslatedAnswer(context);
+    final isCorrect = option == translatedAnswer;
 
     // Audio et haptic feedback
     if (isCorrect) {
@@ -138,8 +140,13 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
 
   @override
   Widget build(BuildContext context) {
+    // Obtenir les options traduites
+    final translatedOptions = widget.exercise.getTranslatedOptions(context);
+    final translatedQuestion = widget.exercise.getTranslatedQuestion(context);
+    final translatedAnswer = widget.exercise.getTranslatedAnswer(context);
+
     // Check if we have valid exercise data
-    if (widget.exercise.options == null || widget.exercise.options!.isEmpty) {
+    if (translatedOptions.isEmpty) {
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -214,9 +221,9 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
                         ),
                       ),
                       child: ArabicText(
-                        widget.exercise.question,
+                        translatedQuestion,
                         style: ArabicTextStyle.smartStyle(
-                          widget.exercise.question,
+                          translatedQuestion,
                           fontSize: 20,
                           color: Colors.white,
                           fontWeight: FontWeight.w500,
@@ -235,11 +242,11 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
                 child: AnimationLimiter(
                   child: ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: widget.exercise.options!.length,
+                    itemCount: translatedOptions.length,
                     itemBuilder: (context, index) {
-                      final option = widget.exercise.options![index];
+                      final option = translatedOptions[index];
                       final isSelected = selectedOption == option;
-                      final isCorrect = option == widget.exercise.answer;
+                      final isCorrect = option == translatedAnswer;
                       final showResult = showFeedback && isSelected;
 
                       return AnimationConfiguration.staggeredList(
@@ -253,7 +260,7 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
                                       margin: EdgeInsets.only(bottom: 16),
                                       child: GestureDetector(
                                         onTap: selectedOption == null
-                                            ? () => checkAnswer(option)
+                                            ? () => checkAnswer(option, context)
                                             : null,
                                         child: AnimatedContainer(
                                           duration: Duration(milliseconds: 400),

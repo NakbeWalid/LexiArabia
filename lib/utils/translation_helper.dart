@@ -22,40 +22,40 @@ class TranslationHelper {
     dynamic field,
     String key,
   ) {
-    // Si c'est déjà une String, la retourner directement (cas sans traduction)
-    if (field is String) {
-      return field;
+    // Supporter uniquement les Maps de traduction pour de meilleures performances
+    if (field is! Map<String, dynamic>) {
+      return 'Translation not available';
     }
 
-    // Si c'est une Map avec des clés de langue
-    if (field is Map<String, dynamic>) {
-      final localizations = AppLocalizations.of(context)!;
-      final langCode = localizations.localeName;
+    final fieldMap = field;
+    final localizations = AppLocalizations.of(context)!;
+    // Extraire le code de langue depuis localeName (peut être 'en' ou 'en_US')
+    final locale = localizations.localeName;
+    final langCode = locale.split('_').first.toLowerCase();
 
-      // Essayer la langue actuelle
-      if (field.containsKey(langCode)) {
-        return field[langCode].toString();
-      }
+    // Essayer la langue actuelle
+    if (fieldMap.containsKey(langCode)) {
+      return fieldMap[langCode].toString();
+    }
 
-      // Fallback vers l'anglais
-      if (field.containsKey('en')) {
-        return field['en'].toString();
-      }
+    // Fallback vers l'anglais
+    if (fieldMap.containsKey('en')) {
+      return fieldMap['en'].toString();
+    }
 
-      // Fallback vers le français
-      if (field.containsKey('fr')) {
-        return field['fr'].toString();
-      }
+    // Fallback vers le français
+    if (fieldMap.containsKey('fr')) {
+      return fieldMap['fr'].toString();
+    }
 
-      // Fallback vers l'arabe
-      if (field.containsKey('ar')) {
-        return field['ar'].toString();
-      }
+    // Fallback vers l'arabe
+    if (fieldMap.containsKey('ar')) {
+      return fieldMap['ar'].toString();
+    }
 
-      // Prendre la première valeur disponible
-      if (field.isNotEmpty) {
-        return field.values.first.toString();
-      }
+    // Prendre la première valeur disponible
+    if (fieldMap.isNotEmpty) {
+      return fieldMap.values.first.toString();
     }
 
     // Aucune traduction disponible
@@ -76,35 +76,36 @@ class TranslationHelper {
   /// );
   /// ```
   static List<String> getTranslationList(BuildContext context, dynamic field) {
-    final localizations = AppLocalizations.of(context)!;
-    final langCode = localizations.localeName;
-
-    // Si c'est déjà une liste, la retourner
-    if (field is List) {
-      return field.map((e) => e.toString()).toList();
+    // Supporter uniquement les Maps de traduction pour de meilleures performances
+    if (field is! Map<String, dynamic>) {
+      return [];
     }
 
-    // Si c'est une Map avec clés de langue
-    if (field is Map<String, dynamic>) {
-      // Essayer la langue actuelle
-      if (field.containsKey(langCode) && field[langCode] is List) {
-        return (field[langCode] as List).map((e) => e.toString()).toList();
-      }
+    final fieldMap = field;
+    final localizations = AppLocalizations.of(context)!;
 
-      // Fallback vers l'anglais
-      if (field.containsKey('en') && field['en'] is List) {
-        return (field['en'] as List).map((e) => e.toString()).toList();
-      }
+    // Extraire le code de langue depuis localeName
+    final locale = localizations.localeName;
+    final langCode = locale.split('_').first.toLowerCase();
 
-      // Fallback vers le français
-      if (field.containsKey('fr') && field['fr'] is List) {
-        return (field['fr'] as List).map((e) => e.toString()).toList();
-      }
+    // Essayer la langue actuelle
+    if (fieldMap.containsKey(langCode) && fieldMap[langCode] is List) {
+      return (fieldMap[langCode] as List).map((e) => e.toString()).toList();
+    }
 
-      // Fallback vers l'arabe
-      if (field.containsKey('ar') && field['ar'] is List) {
-        return (field['ar'] as List).map((e) => e.toString()).toList();
-      }
+    // Fallback vers l'anglais
+    if (fieldMap.containsKey('en') && fieldMap['en'] is List) {
+      return (fieldMap['en'] as List).map((e) => e.toString()).toList();
+    }
+
+    // Fallback vers le français
+    if (fieldMap.containsKey('fr') && fieldMap['fr'] is List) {
+      return (fieldMap['fr'] as List).map((e) => e.toString()).toList();
+    }
+
+    // Fallback vers l'arabe
+    if (fieldMap.containsKey('ar') && fieldMap['ar'] is List) {
+      return (fieldMap['ar'] as List).map((e) => e.toString()).toList();
     }
 
     return [];

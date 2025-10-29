@@ -15,6 +15,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
+import 'package:dualingocoran/utils/translation_helper.dart';
 import 'dart:math' as math;
 
 Future<void> verifierLecons() async {
@@ -35,125 +36,345 @@ Future<void> verifierLecons() async {
       print("📝 Ajout de la leçon: Relative Pronouns");
       await FirebaseFirestore.instance.collection('lessons').doc('Relative Pronouns').set({
         "category": "Pronouns",
-        "description":
-            "Learn how to use Arabic relative pronouns: الَّذِي, الَّتِي, الَّذِينَ, اللَّائِي.",
+
+        "description": {
+          "ar":
+              "تعلّم كيفية استخدام الأسماء الموصولة في اللغة العربية: الَّذِي، الَّتِي، الَّذِينَ، اللَّائِي.",
+          "en":
+              "Learn how to use Arabic relative pronouns: الَّذِي, الَّتِي, الَّذِينَ, اللَّائِي.",
+          "fr":
+              "Apprenez à utiliser les pronoms relatifs arabes : الَّذِي, الَّتِي, الَّذِينَ, اللَّائِي.",
+        },
+
         "exercises": [
           {
-            "answer": "الَّذِي",
-            "options": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
-            "question":
-                "Which relative pronoun is used for: 'The man **who** prays'?",
+            "answer": {"ar": "الَّذِي", "en": "الَّذِي", "fr": "الَّذِي"},
+            "options": {
+              "ar": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
+              "en": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
+              "fr": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
+            },
+            "question": {
+              "ar": "أي اسم موصول يُستخدم لعبارة: الرجل الذي يصلي؟",
+              "en": "Which relative pronoun is used for: 'The man who prays'?",
+              "fr":
+                  "Quel pronom relatif est utilisé pour : 'L'homme qui prie' ?",
+            },
             "type": "multiple_choice",
           },
+
           {
-            "answer": "الَّتِي",
-            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-            "question":
-                "You want to say: 'The woman **who** reads.' What do you use?",
+            "answer": {"ar": "الَّتِي", "en": "الَّتِي", "fr": "الَّتِي"},
+            "options": {
+              "ar": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+              "en": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+              "fr": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+            },
+            "question": {
+              "ar": "تريد أن تقول: المرأة التي تقرأ. أي اسم موصول تستخدم؟",
+              "en": "You want to say: 'The woman who reads.' What do you use?",
+              "fr":
+                  "Vous voulez dire : 'La femme qui lit.' Lequel utilisez-vous ?",
+            },
             "type": "multiple_choice",
           },
+
           {
-            "answer": "الَّذِينَ",
-            "options": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
-            "question":
-                "Pick the correct pronoun: 'Those (men) who believe are successful.'",
+            "answer": {"ar": "الَّذِينَ", "en": "الَّذِينَ", "fr": "الَّذِينَ"},
+            "options": {
+              "ar": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
+              "en": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
+              "fr": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
+            },
+            "question": {
+              "ar": "اختر الاسم الموصول الصحيح: الرجال الذين يؤمنون ناجحون.",
+              "en":
+                  "Pick the correct pronoun: 'Those (men) who believe are successful.'",
+              "fr":
+                  "Choisissez le pronom correct : 'Ceux (hommes) qui croient sont réussis.'",
+            },
             "type": "multiple_choice",
           },
+
           {
-            "answer": "اللَّائِي",
-            "options": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
-            "question": "Which one is used for groups of women?",
+            "answer": {"ar": "اللَّائِي", "en": "اللَّائِي", "fr": "اللَّائِي"},
+            "options": {
+              "ar": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
+              "en": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
+              "fr": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
+            },
+            "question": {
+              "ar": "أي اسم موصول يُستخدم لجماعة من النساء؟",
+              "en": "Which one is used for groups of women?",
+              "fr": "Lequel est utilisé pour des groupes de femmes ?",
+            },
             "type": "multiple_choice",
           },
+
           {
-            "instruction":
-                "Match the Arabic relative pronoun to its correct use.",
-            "options": [
-              "الَّذِي",
-              "الَّتِي",
-              "الَّذِينَ",
-              "اللَّائِي",
-              "who (masculine)",
-              "who (feminine)",
-              "those who (masc.)",
-              "those who (fem.)",
-            ],
+            "instruction": {
+              "ar": "صل كل اسم موصول عربي باستخدامه الصحيح.",
+              "en": "Match the Arabic relative pronoun to its correct use.",
+              "fr":
+                  "Associez chaque pronom relatif arabe à son utilisation correcte.",
+            },
+            "options": {
+              "ar": [
+                "الَّذِي",
+                "الَّتِي",
+                "الَّذِينَ",
+                "اللَّائِي",
+                "الذي",
+                "التي",
+                "الذين",
+                "اللاءي",
+              ],
+              "en": [
+                "الَّذِي",
+                "الَّتِي",
+                "الَّذِينَ",
+                "اللَّائِي",
+                "who (masculine)",
+                "who (feminine)",
+                "those who (masc.)",
+                "those who (fem.)",
+              ],
+              "fr": [
+                "الَّذِي",
+                "الَّتِي",
+                "الَّذِينَ",
+                "اللَّائِي",
+                "qui (masculin)",
+                "qui (féminin)",
+                "ceux qui (masc.)",
+                "celles qui (fém.)",
+              ],
+            },
             "pairs": [
-              {"from": "الَّذِي", "to": "who (masculine)"},
-              {"from": "الَّتِي", "to": "who (feminine)"},
-              {"from": "الَّذِينَ", "to": "those who (masc.)"},
-              {"from": "اللَّائِي", "to": "those who (fem.)"},
+              {
+                "from": "الَّذِي",
+                "to": {
+                  "ar": "الذي",
+                  "en": "who (masculine)",
+                  "fr": "qui (masculin)",
+                },
+              },
+              {
+                "from": "الَّتِي",
+                "to": {
+                  "ar": "التي",
+                  "en": "who (feminine)",
+                  "fr": "qui (féminin)",
+                },
+              },
+              {
+                "from": "الَّذِينَ",
+                "to": {
+                  "ar": "الذين",
+                  "en": "those who (masc.)",
+                  "fr": "ceux qui (masculin)",
+                },
+              },
+              {
+                "from": "اللَّائِي",
+                "to": {
+                  "ar": "اللاءي",
+                  "en": "those who (fem.)",
+                  "fr": "celles qui (féminin)",
+                },
+              },
             ],
-            "question": "Match the Arabic relative pronoun to its correct use.",
+            "question": {
+              "ar": "صل كل اسم موصول عربي باستخدامه الصحيح.",
+              "en": "Match the Arabic relative pronoun to its correct use.",
+              "fr":
+                  "Associez chaque pronom relatif arabe à son utilisation correcte.",
+            },
             "type": "pairs",
           },
+
           {
             "answer": false,
-            "question": "“اللَّائِي” can be used for a group of men.",
+            "question": {
+              "ar": "اللَّائِي يمكن استخدامها لمجموعة من الرجال.",
+              "en": "“اللَّائِي” can be used for a group of men.",
+              "fr": "« اللَّائِي » peut être utilisé pour un groupe d'hommes.",
+            },
             "type": "true_false",
           },
+
           {
             "answer": true,
-            "question": "“الَّتِي” is used for singular feminine nouns.",
+            "question": {
+              "ar": "الَّتِي تُستخدم للأسماء المفردة المؤنثة.",
+              "en": "“الَّتِي” is used for singular feminine nouns.",
+              "fr":
+                  "« الَّتِي » est utilisé pour les noms féminins singuliers.",
+            },
             "type": "true_false",
           },
+
           {
-            "answer": "الَّذِي",
+            "answer": {"ar": "الَّذِي", "en": "الَّذِي", "fr": "الَّذِي"},
             "audioUrl": "audio/allathi.mp3",
-            "options": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-            "question": "Which pronoun do you hear?",
+            "options": {
+              "ar": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+              "en": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+              "fr": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
+            },
+            "question": {
+              "ar": "أي اسم موصول تسمعه؟",
+              "en": "Which pronoun do you hear?",
+              "fr": "Quel pronom entendez-vous ?",
+            },
             "type": "audio_choice",
           },
+
           {
-            "answer": "الَّذِينَ",
+            "answer": {"ar": "الَّذِينَ", "en": "الَّذِينَ", "fr": "الَّذِينَ"},
             "audioUrl": "audio/allatheena.mp3",
-            "options": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
-            "question": "Listen and choose: what do you hear?",
+            "options": {
+              "ar": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
+              "en": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
+              "fr": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
+            },
+            "question": {
+              "ar": "استمع واختر: ما الذي تسمعه؟",
+              "en": "Listen and choose: what do you hear?",
+              "fr": "Écoutez et choisissez : qu'entendez-vous ?",
+            },
             "type": "audio_choice",
           },
+
           {
-            "answer": "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
-            "options": [
-              "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
-              "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
-              "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
-              "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
-            ],
-            "question":
-                "Choose the correct full phrase: 'The students **who** study succeed.'",
+            "answer": {
+              "ar": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ",
+              "en": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ",
+              "fr": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ",
+            },
+            "options": {
+              "ar": [
+                "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
+                "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+                "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
+                "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
+              ],
+              "en": [
+                "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
+                "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+                "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
+                "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
+              ],
+              "fr": [
+                "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
+                "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
+                "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
+                "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
+              ],
+            },
+            "question": {
+              "ar": "اختر العبارة الصحيحة: الطلاب الذين يدرسون ينجحون.",
+              "en":
+                  "Choose the correct full phrase: 'The students who study succeed.'",
+              "fr":
+                  "Choisissez la phrase correcte : 'Les étudiants qui étudient réussissent.'",
+            },
             "type": "multiple_choice",
           },
         ],
+
         "lessonOrder": 1,
         "section": "Basics",
         "sectionOrder": 3,
-        "sectionTitle": "Relative Pronouns",
-        "title": "Relative Pronouns – Who, Which, That",
+
+        "sectionTitle": {
+          "ar": "الأسماء الموصولة",
+          "en": "Relative Pronouns",
+          "fr": "Pronoms relatifs",
+        },
+
+        "title": {
+          "ar": "الأسماء الموصولة 1 - الذي، التي، الذين، اللائي",
+          "en": "Relative Pronouns 1 - Who, Which, That",
+          "fr": "Pronoms relatifs 1 - Qui, Lequel, Que",
+        },
+
         "words": [
           {
+            "description": {
+              "ar": "يُستخدم للأسماء المفردة المذكرة.",
+              "en": "Used for singular masculine nouns.",
+              "fr": "Utilisé pour les noms masculins singuliers.",
+            },
+            "example": {
+              "ar": "الرجلُ الَّذِي يُصَلِّي (الرجل الذي يصلي)",
+              "en": "الرجلُ الَّذِي يُصَلِّي (The man who prays)",
+              "fr": "الرجلُ الَّذِي يُصَلِّي (L'homme qui prie)",
+            },
+            "translation": {
+              "ar": "الذي",
+              "en": "who (masculine)",
+              "fr": "qui (masculin)",
+            },
             "word": "الَّذِي",
-            "translation": "who (masculine)",
-            "description": "Used for singular masculine nouns.",
-            "example": "الرجلُ الَّذِي يُصَلِّي (The man who prays)",
           },
+
           {
+            "description": {
+              "ar": "يُستخدم للأسماء المفردة المؤنثة.",
+              "en": "Used for singular feminine nouns.",
+              "fr": "Utilisé pour les noms féminins singuliers.",
+            },
+            "example": {
+              "ar": "المرأةُ الَّتِي تَقرَأُ (المرأة التي تقرأ)",
+              "en": "المرأةُ الَّتِي تَقرَأُ (The woman who reads)",
+              "fr": "المرأةُ الَّتِي تَقرَأُ (La femme qui lit)",
+            },
+            "translation": {
+              "ar": "التي",
+              "en": "who (feminine)",
+              "fr": "qui (féminin)",
+            },
             "word": "الَّتِي",
-            "translation": "who (feminine)",
-            "description": "Used for singular feminine nouns.",
-            "example": "المرأةُ الَّتِي تَقرَأُ (The woman who reads)",
           },
+
           {
+            "description": {
+              "ar": "يُستخدم لجمع المذكر.",
+              "en": "Used for plural masculine nouns.",
+              "fr": "Utilisé pour les noms masculins pluriels.",
+            },
+            "example": {
+              "ar": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (الطلاب الذين يدرسون)",
+              "en": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (The students who study)",
+              "fr":
+                  "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (Les étudiants qui étudient)",
+            },
+            "translation": {
+              "ar": "الذين",
+              "en": "those who (masc.)",
+              "fr": "ceux qui (masculin)",
+            },
             "word": "الَّذِينَ",
-            "translation": "those who (masc.)",
-            "description": "Used for plural masculine nouns.",
-            "example":
-                "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (The students who study)",
           },
+
           {
+            "description": {
+              "ar": "يُستخدم لجمع المؤنث.",
+              "en": "Used for plural feminine nouns.",
+              "fr": "Utilisé pour les noms féminins pluriels.",
+            },
+            "example": {
+              "ar": "النِّسَاءُ اللَّائِي يُصَلِّينَ (النساء اللائي يصلين)",
+              "en": "النِّسَاءُ اللَّائِي يُصَلِّينَ (The women who pray)",
+              "fr": "النِّسَاءُ اللَّائِي يُصَلِّينَ (Les femmes qui prient)",
+            },
+            "translation": {
+              "ar": "اللائي",
+              "en": "those who (fem.)",
+              "fr": "celles qui (féminin)",
+            },
             "word": "اللَّائِي",
-            "translation": "those who (fem.)",
-            "description": "Used for plural feminine nouns.",
-            "example": "النِّسَاءُ اللَّائِي يُصَلِّينَ (The women who pray)",
           },
         ],
       });
@@ -172,7 +393,7 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Ajouter la nouvelle leçon
-  //await verifierLecons();
+  // await verifierLecons();
 
   runApp(CoranLinguaApp());
 }
@@ -550,9 +771,22 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     // Créer les sections avec leurs métadonnées
     sectionMap.forEach((sectionName, sectionLessons) {
       final sectionData = sectionLessons.first.data() as Map<String, dynamic>;
+      // Extraire le sectionTitle (Map de traductions uniquement)
+      // Note: Cette méthode n'a pas accès au context, donc on utilise anglais comme fallback
+      String sectionTitleText = sectionName;
+      if (sectionData['sectionTitle'] != null &&
+          sectionData['sectionTitle'] is Map) {
+        final titleMap = sectionData['sectionTitle'] as Map<String, dynamic>;
+        sectionTitleText =
+            titleMap['en']?.toString() ??
+            titleMap['fr']?.toString() ??
+            titleMap['ar']?.toString() ??
+            sectionName;
+      }
+
       sections.add({
         'name': sectionName,
-        'title': sectionData['sectionTitle'] as String? ?? sectionName,
+        'title': sectionTitleText,
         'description': _getSectionDescription(sectionName),
         'icon': _getSectionIcon(sectionName),
         'color': _getSectionColor(sectionName),
@@ -1183,10 +1417,32 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
             final lesson = entry.value;
             final data = lesson.data() as Map<String, dynamic>;
 
+            // Extraire le titre (Map de traductions uniquement)
+            String titleText = 'Unknown';
+            if (data['title'] != null && data['title'] is Map) {
+              final titleMap = data['title'] as Map<String, dynamic>;
+              titleText = TranslationHelper.getTranslation(
+                context,
+                titleMap,
+                'title',
+              );
+            }
+
+            // Extraire la description (Map de traductions uniquement)
+            String descriptionText = '';
+            if (data['description'] != null && data['description'] is Map) {
+              final descMap = data['description'] as Map<String, dynamic>;
+              descriptionText = TranslationHelper.getTranslation(
+                context,
+                descMap,
+                'description',
+              );
+            }
+
             return _buildEnhancedLessonBubble(
               context,
-              data['title'] as String? ?? 'Unknown',
-              data['description'] as String? ?? '',
+              titleText,
+              descriptionText,
               data['words'] as List<dynamic>? ?? [],
               data['exercises'] as List<dynamic>? ?? [],
               index,

@@ -16,7 +16,7 @@ class CustomButton extends StatelessWidget {
   final double borderRadius;
 
   const CustomButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.icon,
@@ -28,14 +28,16 @@ class CustomButton extends StatelessWidget {
     this.height = 48.0,
     this.padding,
     this.borderRadius = AppTheme.borderRadiusMedium,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBackgroundColor = backgroundColor ?? 
+    final effectiveBackgroundColor =
+        backgroundColor ??
         (isOutlined ? Colors.transparent : AppTheme.primaryColor);
-    
-    final effectiveTextColor = textColor ?? 
+
+    final effectiveTextColor =
+        textColor ??
         (isOutlined ? AppTheme.primaryColor : AppTheme.textPrimaryColor);
 
     return Container(
@@ -44,7 +46,7 @@ class CustomButton extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: isOutlined ? null : AppTheme.buttonGradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: isOutlined 
+        border: isOutlined
             ? Border.all(color: AppTheme.primaryColor, width: 2)
             : null,
         boxShadow: isOutlined ? null : AppTheme.buttonShadow,
@@ -55,13 +57,13 @@ class CustomButton extends StatelessWidget {
           onTap: isLoading ? null : onPressed,
           borderRadius: BorderRadius.circular(borderRadius),
           child: Container(
-            padding: padding ?? const EdgeInsets.symmetric(
-              horizontal: AppTheme.spacingL,
-              vertical: AppTheme.spacingM,
-            ),
-            child: Center(
-              child: _buildContent(effectiveTextColor),
-            ),
+            padding:
+                padding ??
+                const EdgeInsets.symmetric(
+                  horizontal: AppTheme.spacingL,
+                  vertical: AppTheme.spacingM,
+                ),
+            child: Center(child: _buildContent(effectiveTextColor)),
           ),
         ),
       ),
@@ -81,12 +83,12 @@ class CustomButton extends StatelessWidget {
     }
 
     final children = <Widget>[];
-    
+
     if (icon != null) {
       children.add(Icon(icon, color: textColor, size: 20));
       children.add(SizedBox(width: AppTheme.spacingS));
     }
-    
+
     children.add(
       Text(
         text,
@@ -115,13 +117,13 @@ class PrimaryButton extends StatelessWidget {
   final double? width;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.icon,
     this.isLoading = false,
     this.width,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -143,13 +145,13 @@ class OutlinedButton extends StatelessWidget {
   final double? width;
 
   const OutlinedButton({
-    Key? key,
+    super.key,
     required this.text,
     this.onPressed,
     this.icon,
     this.isLoading = false,
     this.width,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -172,13 +174,13 @@ class IconButton extends StatelessWidget {
   final double padding;
 
   const IconButton({
-    Key? key,
+    super.key,
     required this.icon,
     this.onPressed,
     this.color,
     this.size = 24.0,
     this.padding = 8.0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -392,7 +392,7 @@ class _AudioExerciseState extends State<AudioExercise>
                 SizedBox(height: 20),
 
                 // Options Grid
-                Container(
+                SizedBox(
                   height: 300, // Hauteur fixe pour permettre le scroll
                   child: AnimationLimiter(
                     child: GridView.builder(

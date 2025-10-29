@@ -526,11 +526,22 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
   String _getCurrentWordTranslation(AppLocalizations localizations) {
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['translation'] ??
-          localizations.translationNotAvailable;
-    } else if (currentWord is String) {
-      // Fallback vers l'ancienne méthode pour la compatibilité
-      return _getWordTranslation(currentWord, localizations);
+      // Translation doit être une Map de traductions uniquement
+      if (currentWord['translation'] != null &&
+          currentWord['translation'] is Map) {
+        final translationMap =
+            currentWord['translation'] as Map<String, dynamic>;
+        final langCode = localizations.localeName
+            .split('_')
+            .first
+            .toLowerCase();
+        return translationMap[langCode]?.toString() ??
+            translationMap['en']?.toString() ??
+            translationMap['fr']?.toString() ??
+            translationMap['ar']?.toString() ??
+            localizations.translationNotAvailable;
+      }
+      return localizations.translationNotAvailable;
     }
     return localizations.translationNotAvailable;
   }
@@ -538,8 +549,21 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
   String _getCurrentWordDescription(AppLocalizations localizations) {
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['description'] ??
-          localizations.descriptionNotAvailable;
+      // Description doit être une Map de traductions uniquement
+      if (currentWord['description'] != null &&
+          currentWord['description'] is Map) {
+        final descMap = currentWord['description'] as Map<String, dynamic>;
+        final langCode = localizations.localeName
+            .split('_')
+            .first
+            .toLowerCase();
+        return descMap[langCode]?.toString() ??
+            descMap['en']?.toString() ??
+            descMap['fr']?.toString() ??
+            descMap['ar']?.toString() ??
+            localizations.descriptionNotAvailable;
+      }
+      return localizations.descriptionNotAvailable;
     }
     return localizations.descriptionNotAvailable;
   }
@@ -547,10 +571,20 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
   String _getCurrentWordExample(AppLocalizations localizations) {
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['example'] ?? localizations.exampleNotAvailable;
-    } else if (currentWord is String) {
-      // Fallback vers l'ancienne méthode pour la compatibilité
-      return _getWordExample(currentWord);
+      // Example doit être une Map de traductions uniquement
+      if (currentWord['example'] != null && currentWord['example'] is Map) {
+        final exampleMap = currentWord['example'] as Map<String, dynamic>;
+        final langCode = localizations.localeName
+            .split('_')
+            .first
+            .toLowerCase();
+        return exampleMap[langCode]?.toString() ??
+            exampleMap['en']?.toString() ??
+            exampleMap['fr']?.toString() ??
+            exampleMap['ar']?.toString() ??
+            localizations.exampleNotAvailable;
+      }
+      return localizations.exampleNotAvailable;
     }
     return localizations.exampleNotAvailable;
   }
