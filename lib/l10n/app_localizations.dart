@@ -544,6 +544,18 @@ abstract class AppLocalizations {
   /// **'Enable Sound'**
   String get enableSound;
 
+  /// No description provided for @appearance.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearance;
+
+  /// No description provided for @enableDarkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable dark mode'**
+  String get enableDarkMode;
+
   /// No description provided for @userSelection.
   ///
   /// In en, this message translates to:

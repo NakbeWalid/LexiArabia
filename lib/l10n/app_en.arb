@@ -73,7 +73,8 @@
   "enableNotifications": "Enable Notifications",
   "sound": "Sound",
   "enableSound": "Enable Sound",
+  "appearance": "Appearance",
+  "enableDarkMode": "Enable dark mode",
   "userSelection": "User Selection",
-  "chooseDemoProfile": "Choose a demo profile",
-  "startLesson": "Start Lesson"
+  "chooseDemoProfile": "Choose a demo profile"
 }

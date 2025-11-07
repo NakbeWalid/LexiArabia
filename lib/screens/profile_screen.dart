@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
 import 'dart:math' as math;
 
 class ProfilScreen extends StatefulWidget {
@@ -98,21 +100,55 @@ class _ProfilScreenState extends State<ProfilScreen>
                       ),
                     ),
                     Spacer(),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.2),
-                        ),
-                      ),
-                      child: IconButton(
-                        icon: Icon(Icons.edit, color: Colors.white),
-                        onPressed: () {
-                          HapticFeedback.selectionClick();
-                          // TODO: Implement edit profile
-                        },
-                      ),
+                    Consumer<AuthService>(
+                      builder: (context, authService, child) {
+                        return PopupMenuButton<String>(
+                          icon: Icon(Icons.more_vert, color: Colors.white),
+                          onSelected: (value) async {
+                            if (value == 'logout') {
+                              final shouldLogout = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('Se déconnecter'),
+                                  content: Text(
+                                    'Êtes-vous sûr de vouloir vous déconnecter ?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: Text('Annuler'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: Text(
+                                        'Se déconnecter',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (shouldLogout == true) {
+                                await authService.signOut();
+                              }
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'logout',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.logout, color: Colors.red),
+                                  SizedBox(width: 8),
+                                  Text('Se déconnecter'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

@@ -231,6 +231,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get enableSound => 'تفعيل الصوت';
 
   @override
+  String get appearance => 'المظهر';
+
+  @override
+  String get enableDarkMode => 'تفعيل الوضع الداكن';
+
+  @override
   String get userSelection => 'اختيار المستخدم';
 
   @override

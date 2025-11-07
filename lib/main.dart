@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -9,14 +8,16 @@ import 'package:dualingocoran/screens/profile_screen.dart';
 import 'package:dualingocoran/screens/lesson_preview_screen.dart';
 import 'package:dualingocoran/screens/settings_screen.dart';
 import 'package:dualingocoran/screens/progression_screen.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
+import 'package:dualingocoran/services/auth_service.dart';
+import 'package:dualingocoran/services/theme_provider.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:dualingocoran/utils/translation_helper.dart';
+import 'package:dualingocoran/screens/login_screen.dart';
 import 'dart:math' as math;
+import 'package:firebase_auth/firebase_auth.dart';
 
 Future<void> verifierLecons() async {
   try {
@@ -398,57 +399,156 @@ void main() async {
   runApp(CoranLinguaApp());
 }
 
+const bool kAuthGuardEnabledForTesting = true;
+
 class CoranLinguaApp extends StatelessWidget {
   const CoranLinguaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => LanguageProvider(),
-      child: Consumer<LanguageProvider>(
-        builder: (context, languageProvider, child) {
-          return MaterialApp(
-            title: 'CoranLingua',
-            theme: ThemeData.dark().copyWith(
-              primaryColor: const Color(0xFFD4AF37),
-              scaffoldBackgroundColor: const Color(0xFF121212),
-              cardColor: const Color(0xFF1E1E1E),
-              textTheme: const TextTheme(
-                headlineMedium: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFFD4AF37),
-                ),
-                bodyMedium: TextStyle(fontSize: 16, color: Colors.white),
-              ),
-              appBarTheme: const AppBarTheme(
-                backgroundColor: Colors.black,
-                foregroundColor: Color(0xFFD4AF37),
-              ),
-              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-                backgroundColor: Colors.black,
-                selectedItemColor: Color(0xFFD4AF37),
-                unselectedItemColor: Colors.grey,
-              ),
-              elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFD4AF37),
-                  foregroundColor: Colors.black,
-                ),
-              ),
-            ),
-            // Configuration de l'internationalisation
-            localizationsDelegates: [
-              ...AppLocalizations.localizationsDelegates,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: languageProvider.currentLocale,
-            home: MainScreen(),
-            debugShowCheckedModeBanner: false,
-            // showPerformanceOverlay: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => LanguageProvider()),
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        Provider<AuthService>(create: (context) => AuthService()),
+      ],
+      child: Consumer2<LanguageProvider, ThemeProvider>(
+        builder: (context, languageProvider, themeProvider, child) {
+          return StreamBuilder<User?>(
+            stream: context.read<AuthService>().authStateChanges,
+            builder: (context, snapshot) {
+              return MaterialApp(
+                title: 'CoranLingua',
+                themeMode: themeProvider.themeMode,
+                theme: buildLightTheme(),
+                darkTheme: buildDarkTheme(),
+                // Configuration de l'internationalisation
+                localizationsDelegates: [
+                  ...AppLocalizations.localizationsDelegates,
+                ],
+                supportedLocales: AppLocalizations.supportedLocales,
+                locale: languageProvider.currentLocale,
+                // Temporairement désactivé pour les tests via kAuthGuardEnabledForTesting
+                home: kAuthGuardEnabledForTesting
+                    ? (snapshot.hasData ? MainScreen() : LoginScreen())
+                    : MainScreen(),
+                debugShowCheckedModeBanner: false,
+                // showPerformanceOverlay: true,
+              );
+            },
           );
         },
       ),
+    );
+  }
+
+  ThemeData buildLightTheme() {
+    final base = ThemeData.light(useMaterial3: true);
+    final colorScheme = base.colorScheme.copyWith(
+      primary: const Color(0xFFD4AF37),
+      secondary: const Color(0xFF6D5DF6),
+      background: const Color(0xFFF4F7FF),
+      surface: Colors.white,
+      onBackground: const Color(0xFF1B1B33),
+      onSurface: const Color(0xFF1B1B33),
+    );
+
+    return base.copyWith(
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: colorScheme.background,
+      primaryColor: colorScheme.primary,
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        foregroundColor: colorScheme.onBackground,
+        elevation: 0,
+        titleTextStyle: GoogleFonts.poppins(
+          color: colorScheme.onBackground,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textTheme: GoogleFonts.poppinsTextTheme(base.textTheme).apply(
+        bodyColor: colorScheme.onBackground,
+        displayColor: colorScheme.onBackground,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: Colors.grey.shade600,
+        showUnselectedLabels: true,
+        selectedIconTheme: const IconThemeData(size: 28),
+        unselectedIconTheme: const IconThemeData(size: 24),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.black,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      cardColor: colorScheme.surface,
+    );
+  }
+
+  ThemeData buildDarkTheme() {
+    final base = ThemeData.dark(useMaterial3: true);
+    final colorScheme = base.colorScheme.copyWith(
+      primary: const Color(0xFFD4AF37),
+      secondary: const Color(0xFF6D5DF6),
+      background: const Color(0xFF121212),
+      surface: const Color(0xFF1E1E1E),
+      onBackground: Colors.white,
+      onSurface: Colors.white,
+    );
+
+    return base.copyWith(
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: colorScheme.background,
+      primaryColor: colorScheme.primary,
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.transparent,
+        foregroundColor: colorScheme.onBackground,
+        elevation: 0,
+        titleTextStyle: GoogleFonts.poppins(
+          color: colorScheme.onBackground,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      textTheme: GoogleFonts.poppinsTextTheme(base.textTheme).apply(
+        bodyColor: colorScheme.onBackground,
+        displayColor: colorScheme.onBackground,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: const Color(0xFF050505),
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: Colors.grey.shade500,
+        showUnselectedLabels: true,
+        selectedIconTheme: const IconThemeData(size: 28),
+        unselectedIconTheme: const IconThemeData(size: 24),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.black,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+      cardColor: colorScheme.surface,
     );
   }
 }
@@ -611,7 +711,6 @@ class RoadmapBubbleScreen extends StatefulWidget {
 
 class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     with TickerProviderStateMixin {
-  late AnimationController _pathController;
   late AnimationController _bubbleController;
   late AnimationController _sectionPanelController;
   late AnimationController _floatingController;
@@ -625,11 +724,6 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
   @override
   void initState() {
     super.initState();
-    _pathController = AnimationController(
-      duration: Duration(seconds: 4),
-      vsync: this,
-    )..repeat();
-
     _bubbleController = AnimationController(
       duration: Duration(milliseconds: 1500),
       vsync: this,
@@ -656,7 +750,6 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
 
   @override
   void dispose() {
-    _pathController.dispose();
     _bubbleController.dispose();
     _sectionPanelController.dispose();
     _floatingController.dispose();
@@ -1401,16 +1494,6 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
       height: _calculateRoadmapHeight(),
       child: Stack(
         children: [
-          // Chemin de base avec effet de particules
-          CustomPaint(
-            painter: EnhancedPathPainter(
-              lessons: _lessons,
-              pathValue: _pathController.value,
-              floatingValue: _floatingController.value,
-            ),
-            child: Container(),
-          ),
-
           // Bulles de leçons avec animations avancées
           ..._lessons.asMap().entries.map((entry) {
             final index = entry.key;
@@ -1451,40 +1534,8 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
               data['started'] == true,
             );
           }),
-
-          // Effets de particules flottantes
-          _buildFloatingParticles(),
         ],
       ),
-    );
-  }
-
-  Widget _buildFloatingParticles() {
-    return AnimatedBuilder(
-      animation: _floatingController,
-      builder: (context, child) {
-        return Stack(
-          children: List.generate(20, (index) {
-            final progress = (index / 20.0 + _floatingController.value) % 1.0;
-            final x = MediaQuery.of(context).size.width * progress;
-            final y = 200 + (progress * _calculateRoadmapHeight() * 0.8);
-            final offset = math.sin(progress * 4 * math.pi + index) * 20;
-
-            return Positioned(
-              left: x + offset,
-              top: y,
-              child: Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.6),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            );
-          }),
-        );
-      },
     );
   }
 
@@ -1715,14 +1766,6 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
 
   Offset _calculateEnhancedBubblePosition(int index, int totalLessons) {
     final screenWidth = MediaQuery.of(context).size.width - 40;
-    final screenHeight = _calculateRoadmapHeight();
-
-    // Utiliser l'index de la liste pour éviter les superpositions
-    // mais trier les leçons par ordre logique d'abord
-    final lesson = _lessons[index];
-    final data = lesson.data() as Map<String, dynamic>;
-    final sectionOrder = data['sectionOrder'] as int? ?? 1;
-    final lessonOrder = data['lessonOrder'] as int? ?? 1;
 
     // Chemin en zigzag avec espacement régulier
     final baseX = screenWidth * 0.5;
@@ -1930,158 +1973,6 @@ class DuolingoPathPainter extends CustomPainter {
         for (int k = 0; k < 4; k++) {
           final angle = k * math.pi / 2 + pathValue * 2 * math.pi;
           final rayLength = 6 + math.sin(pathValue * 4 * math.pi + k) * 2;
-          final rayEndX = sparkleX + math.cos(angle) * rayLength;
-          final rayEndY = sparkleY + math.sin(angle) * rayLength;
-
-          canvas.drawLine(
-            Offset(sparkleX, sparkleY),
-            Offset(rayEndX, rayEndY),
-            rayPaint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-class EnhancedPathPainter extends CustomPainter {
-  final List<QueryDocumentSnapshot> lessons;
-  final double pathValue;
-  final double floatingValue;
-
-  EnhancedPathPainter({
-    required this.lessons,
-    required this.pathValue,
-    required this.floatingValue,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (lessons.isEmpty) return;
-
-    final paint = Paint()
-      ..color = Color(0xFFD4AF37)
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-
-    final glowPaint = Paint()
-      ..color = Color(0xFFD4AF37).withOpacity(0.3)
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round;
-
-    final sparklePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    // Dessiner le chemin sinueux
-    final path = Path();
-    final points = <Offset>[];
-
-    // Calculer les points du chemin avec le même algorithme que _calculateBubblePosition
-    for (int i = 0; i < lessons.length; i++) {
-      final progress = i / (lessons.length - 1);
-
-      // Position X avec variation sinusoïdale plus prononcée
-      final baseX = size.width * 0.5;
-      final variationX =
-          math.sin(progress * math.pi * 4) * (size.width * 0.35) +
-          math.sin(progress * math.pi * 8) * (size.width * 0.1) +
-          math.sin(progress * math.pi * 12) *
-              (size.width * 0.05) *
-              math.sin(floatingValue * 2 * math.pi);
-      final x = baseX + variationX;
-
-      // Position Y progressive avec légères ondulations
-      final baseY = 200 + (progress * (size.height - 400));
-      final waveY =
-          math.sin(progress * math.pi * 6) * 20 +
-          math.sin(progress * math.pi * 12) *
-              10 *
-              math.sin(floatingValue * 2 * math.pi);
-      final y = baseY + waveY;
-
-      points.add(Offset(x, y));
-    }
-
-    // Créer le chemin courbe
-    if (points.isNotEmpty) {
-      path.moveTo(points.first.dx, points.first.dy);
-
-      for (int i = 1; i < points.length; i++) {
-        final current = points[i];
-        final previous = points[i - 1];
-
-        // Créer des courbes de Bézier plus naturelles
-        final control1 = Offset(
-          previous.dx + (current.dx - previous.dx) * 0.3,
-          previous.dy +
-              (current.dy - previous.dy) * 0.3 +
-              40 +
-              math.sin(floatingValue * 2 * math.pi) * 10,
-        );
-        final control2 = Offset(
-          previous.dx + (current.dx - previous.dx) * 0.7,
-          previous.dy +
-              (current.dy - previous.dy) * 0.7 -
-              40 -
-              math.sin(floatingValue * 2 * math.pi) * 10,
-        );
-
-        path.cubicTo(
-          control1.dx,
-          control1.dy,
-          control2.dx,
-          control2.dy,
-          current.dx,
-          current.dy,
-        );
-      }
-    }
-
-    // Dessiner le chemin avec lueur
-    canvas.drawPath(path, glowPaint);
-    canvas.drawPath(path, paint);
-
-    // Ajouter des étincelles animées le long du chemin
-    final sparkleCount = 20;
-    for (int i = 0; i < sparkleCount; i++) {
-      final t = (pathValue + i * 0.08) % 1.0;
-      final sparkleMetrics = path.computeMetrics().first;
-      final sparklePos = sparkleMetrics.getTangentForOffset(
-        sparkleMetrics.length * t,
-      );
-
-      if (sparklePos != null) {
-        final sparkleX = sparklePos.position.dx;
-        final sparkleY = sparklePos.position.dy;
-
-        // Dessiner l'étincelle
-        canvas.drawCircle(
-          Offset(sparkleX, sparkleY),
-          3 +
-              math.sin(pathValue * 2 * math.pi + i) * 1 +
-              math.sin(floatingValue * 2 * math.pi) * 1,
-          sparklePaint,
-        );
-
-        // Dessiner les rayons de l'étincelle
-        final rayPaint = Paint()
-          ..color = Colors.white.withOpacity(0.7)
-          ..strokeWidth = 1
-          ..strokeCap = StrokeCap.round;
-
-        for (int k = 0; k < 4; k++) {
-          final angle =
-              k * math.pi / 2 +
-              pathValue * 2 * math.pi +
-              floatingValue * 2 * math.pi;
-          final rayLength =
-              6 +
-              math.sin(pathValue * 4 * math.pi + k) * 2 +
-              math.sin(floatingValue * 4 * math.pi + k) * 2;
           final rayEndX = sparkleX + math.cos(angle) * rayLength;
           final rayEndY = sparkleY + math.sin(angle) * rayLength;
 

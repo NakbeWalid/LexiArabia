@@ -231,6 +231,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get enableSound => 'Enable Sound';
 
   @override
+  String get appearance => 'Appearance';
+
+  @override
+  String get enableDarkMode => 'Enable dark mode';
+
+  @override
   String get userSelection => 'User Selection';
 
   @override

@@ -73,7 +73,8 @@
   "enableNotifications": "تفعيل الإشعارات",
   "sound": "الصوت",
   "enableSound": "تفعيل الصوت",
+  "appearance": "المظهر",
+  "enableDarkMode": "تفعيل الوضع الداكن",
   "userSelection": "اختيار المستخدم",
-  "chooseDemoProfile": "اختر ملف شخصي تجريبي",
-  "startLesson": "ابدأ الدرس"
+  "chooseDemoProfile": "اختر ملف شخصي تجريبي"
 }
