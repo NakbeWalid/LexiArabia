@@ -180,13 +180,8 @@ dualingocoran/
 
 ---
 
-## 🎨 Captures d'Écran
 
-> **📸 Guide Complet :** Consultez [GUIDE_SCREENSHOTS.md](GUIDE_SCREENSHOTS.md) pour un guide détaillé sur l'ajout de captures d'écran.
-
-Pour améliorer le README, ajoutez des captures d'écran dans un dossier `screenshots/` à la racine du projet et référencez-les ci-dessous. Voici les captures recommandées :
-
-### Captures d'Écran Recommandées
+### Captures d'Écran 
 
 1. **Roadmap/Home Screen** - `screenshots/01-roadmap.png`
    - Capture de l'écran principal avec la roadmap des leçons
@@ -214,38 +209,7 @@ Pour améliorer le README, ajoutez des captures d'écran dans un dossier `screen
 7. **Authentication** - `screenshots/07-login.png`
    - Écran de connexion/inscription
 
-**Exemple d'ajout dans le README :**
 
-```markdown
-### 📱 Captures d'Écran
-
-<div align="center">
-  
-![Roadmap](screenshots/01-roadmap.png)
-*Écran principal avec la roadmap interactive*
-
-![Exercices](screenshots/03-exercises.png)
-*Différents types d'exercices interactifs*
-
-![Progression](screenshots/04-progression.png)
-*Tableau de bord de progression*
-
-</div>
-```
-
----
-
-## 🧪 Tests
-
-```bash
-# Exécuter les tests
-flutter test
-
-# Exécuter les tests avec couverture
-flutter test --coverage
-```
-
----
 
 ## 🚧 Développement
 
@@ -279,18 +243,6 @@ flutter test --coverage
 
 ---
 
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! Pour contribuer :
-
-1. Fork le projet
-2. Créez une branche pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
-3. Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. Push vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrez une Pull Request
-
----
-
 ## 📄 Licence
 
 Ce projet est privé et propriétaire. Tous droits réservés.
@@ -299,7 +251,7 @@ Ce projet est privé et propriétaire. Tous droits réservés.
 
 ## 👥 Auteurs
 
-- **Votre Nom** - *Développement initial* - [Votre GitHub](https://github.com/votre-username)
+- Walid Benakmoum - *Développement initial* - [Votre GitHub](https://github.com/votre-username)
 
 ---
 
