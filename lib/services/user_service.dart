@@ -1,5 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// Fonction helper pour formater la date (utilisée pour dailyProgress)
+String _getDateString(DateTime date) {
+  return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+}
+
 class UserService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static const String _usersCollection = 'users';
@@ -216,7 +221,10 @@ class UserService {
         'progress': {'lessons': {}, 'sections': {}},
         'achievements': {},
         'studySessions': {},
-        'dailyProgress': {},
+        'dailyProgress': {
+          'lastLessonDate': _getDateString(DateTime.now()),
+          'lessonsCompletedToday': 0,
+        },
       });
     } catch (e) {
       print('❌ Erreur lors de la création de l\'utilisateur: $e');

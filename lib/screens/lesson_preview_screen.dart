@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dualingocoran/exercises/exercise_page.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
+import 'package:dualingocoran/services/daily_limit_service.dart';
 
 class LessonPreviewScreen extends StatefulWidget {
   final String lessonTitle;
@@ -75,7 +76,73 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
     }
   }
 
-  void _startLesson() {
+  Future<void> _startLesson() async {
+    // Vérifier la limite quotidienne
+    final canStart = await DailyLimitService.canStartLesson();
+
+    if (!canStart) {
+      // Afficher un message indiquant que la limite est atteinte
+      final limit = DailyLimitService.getDailyLimit();
+      final completed = await DailyLimitService.getLessonsCompletedToday();
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Row(
+              children: [
+                Icon(Icons.lock_outline, color: Colors.orange.shade600),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Limite quotidienne atteinte',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Vous avez complété $completed/$limit leçons aujourd\'hui.',
+                  style: GoogleFonts.poppins(fontSize: 16),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Revenez demain pour continuer votre apprentissage !',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Compris',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue.shade600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
     // Convertir les exercices bruts en objets Exercise
     List<Exercise> exercises = [];
     try {

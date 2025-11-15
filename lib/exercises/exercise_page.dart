@@ -6,6 +6,7 @@ import 'package:dualingocoran/exercises/audio_exercise.dart';
 import 'package:dualingocoran/exercises/dragDropExercise.dart';
 import 'package:dualingocoran/exercises/pairs_exercise.dart';
 import 'package:dualingocoran/exercises/true_false_exercise.dart';
+import 'package:dualingocoran/services/daily_limit_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -65,6 +66,9 @@ class _ExercisePageState extends State<ExercisePage>
       HapticFeedback.heavyImpact();
 
       await Future.delayed(const Duration(milliseconds: 500));
+
+      // Incrémenter le compteur de leçons complétées aujourd'hui
+      await DailyLimitService.incrementLessonCount();
 
       showDialog(
         context: context,

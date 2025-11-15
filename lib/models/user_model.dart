@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserModel {
   final String userId;
   final UserProfile profile;
@@ -29,9 +31,25 @@ class UserModel {
       studySessions: (data['studySessions'] as List<dynamic>? ?? [])
           .map((session) => StudySession.fromMap(session))
           .toList(),
-      dailyProgress: (data['dailyProgress'] as Map<String, dynamic>? ?? {}).map(
-        (key, value) => MapEntry(key, DailyProgress.fromMap(value)),
-      ),
+      dailyProgress: () {
+        final dp = data['dailyProgress'] as Map<String, dynamic>? ?? {};
+        // dailyProgress peut avoir deux structures :
+        // 1. Ancienne structure : Map<date, DailyProgress> avec lessonsCompleted, etc.
+        // 2. Nouvelle structure : {lastLessonDate: string, lessonsCompletedToday: int} (au niveau racine)
+        if (dp.containsKey('lastLessonDate') ||
+            dp.containsKey('lessonsCompletedToday')) {
+          // C'est la nouvelle structure - ne pas la traiter comme une map de DailyProgress
+          // Retourner une map vide car cette structure est gérée directement par DailyLimitService
+          return <String, DailyProgress>{};
+        }
+        // Ancienne structure : map de dates vers DailyProgress
+        return dp.map((key, value) {
+          if (value is Map<String, dynamic>) {
+            return MapEntry(key, DailyProgress.fromMap(value));
+          }
+          return MapEntry(key, DailyProgress.fromMap({}));
+        });
+      }(),
     );
   }
 
@@ -75,6 +93,17 @@ class UserProfile {
   });
 
   factory UserProfile.fromMap(Map<String, dynamic> data) {
+    DateTime? parseTimestamp(dynamic timestamp) {
+      if (timestamp == null) return null;
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      }
+      if (timestamp is DateTime) {
+        return timestamp;
+      }
+      return null;
+    }
+
     return UserProfile(
       username: data['username'] ?? '',
       email: data['email'] ?? '',
@@ -83,9 +112,8 @@ class UserProfile {
       bio: data['bio'],
       nativeLanguage: data['nativeLanguage'] ?? 'en',
       learningLanguage: data['learningLanguage'] ?? 'ar',
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      lastActive:
-          (data['lastActive'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: parseTimestamp(data['createdAt']) ?? DateTime.now(),
+      lastActive: parseTimestamp(data['lastActive']) ?? DateTime.now(),
     );
   }
 
@@ -204,9 +232,20 @@ class LessonProgress {
   });
 
   factory LessonProgress.fromMap(Map<String, dynamic> data) {
+    DateTime? parseTimestamp(dynamic timestamp) {
+      if (timestamp == null) return null;
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      }
+      if (timestamp is DateTime) {
+        return timestamp;
+      }
+      return null;
+    }
+
     return LessonProgress(
       completed: data['completed'] ?? false,
-      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      completedAt: parseTimestamp(data['completedAt']),
       score: data['score'] ?? 0,
       attempts: data['attempts'] ?? 0,
       bestScore: data['bestScore'] ?? 0,
@@ -238,9 +277,20 @@ class SectionProgress {
   });
 
   factory SectionProgress.fromMap(Map<String, dynamic> data) {
+    DateTime? parseTimestamp(dynamic timestamp) {
+      if (timestamp == null) return null;
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      }
+      if (timestamp is DateTime) {
+        return timestamp;
+      }
+      return null;
+    }
+
     return SectionProgress(
       completed: data['completed'] ?? false,
-      completedAt: (data['completedAt'] as Timestamp?)?.toDate(),
+      completedAt: parseTimestamp(data['completedAt']),
       lessonsCompleted: data['lessonsCompleted'] ?? 0,
       totalLessons: data['totalLessons'] ?? 0,
     );
@@ -268,9 +318,20 @@ class UserAchievement {
   });
 
   factory UserAchievement.fromMap(Map<String, dynamic> data) {
+    DateTime? parseTimestamp(dynamic timestamp) {
+      if (timestamp == null) return null;
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      }
+      if (timestamp is DateTime) {
+        return timestamp;
+      }
+      return null;
+    }
+
     return UserAchievement(
       unlocked: data['unlocked'] ?? false,
-      unlockedAt: (data['unlockedAt'] as Timestamp?)?.toDate(),
+      unlockedAt: parseTimestamp(data['unlockedAt']),
       progress: data['progress'] ?? 0,
     );
   }
@@ -304,10 +365,32 @@ class StudySession {
   });
 
   factory StudySession.fromMap(Map<String, dynamic> data) {
+    DateTime parseTimestamp(dynamic timestamp) {
+      if (timestamp == null) return DateTime.now();
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      }
+      if (timestamp is DateTime) {
+        return timestamp;
+      }
+      return DateTime.now();
+    }
+
+    DateTime? parseTimestampNullable(dynamic timestamp) {
+      if (timestamp == null) return null;
+      if (timestamp is Timestamp) {
+        return timestamp.toDate();
+      }
+      if (timestamp is DateTime) {
+        return timestamp;
+      }
+      return null;
+    }
+
     return StudySession(
       sessionId: data['sessionId'] ?? '',
-      startedAt: (data['startedAt'] as Timestamp).toDate(),
-      endedAt: (data['endedAt'] as Timestamp?)?.toDate(),
+      startedAt: parseTimestamp(data['startedAt']),
+      endedAt: parseTimestampNullable(data['endedAt']),
       duration: data['duration'] ?? 0,
       lessonsStudied: List<String>.from(data['lessonsStudied'] ?? []),
       exercisesCompleted: data['exercisesCompleted'] ?? 0,
@@ -362,15 +445,4 @@ class DailyProgress {
       'streakMaintained': streakMaintained,
     };
   }
-}
-
-// Classe utilitaire pour les timestamps Firestore
-class Timestamp {
-  final DateTime dateTime;
-
-  Timestamp(this.dateTime);
-
-  DateTime toDate() => dateTime;
-
-  static Timestamp now() => Timestamp(DateTime.now());
 }

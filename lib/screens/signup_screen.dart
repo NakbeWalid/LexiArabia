@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/user_provider.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -42,11 +43,18 @@ class _SignupScreenState extends State<SignupScreen> {
 
       try {
         final authService = Provider.of<AuthService>(context, listen: false);
-        await authService.registerWithEmailAndPassword(
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+        final userCredential = await authService.registerWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           name: _nameController.text.trim(),
         );
+
+        // Charger l'utilisateur dans UserProvider
+        if (userCredential?.user != null) {
+          await userProvider.loadUser(userCredential!.user!.uid);
+        }
 
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/home');
@@ -119,7 +127,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ).animate().fadeIn(delay: 200.ms),
                     SizedBox(height: 8),
                     Text(
-                      'Rejoignez DualingOcoran',
+                      'Rejoignez LexiArabia',
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         color: Colors.white70,
@@ -157,7 +165,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: Colors.black12,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -184,7 +192,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: Colors.black12,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -222,7 +230,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: Colors.black12,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -262,7 +270,7 @@ class _SignupScreenState extends State<SignupScreen> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: Colors.white,
+                        fillColor: Colors.black12,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {

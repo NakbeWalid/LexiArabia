@@ -4,8 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/user_provider.dart';
 import 'signup_screen.dart';
-import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -39,10 +39,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
       try {
         final authService = Provider.of<AuthService>(context, listen: false);
-        await authService.signInWithEmailAndPassword(
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        
+        final userCredential = await authService.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+
+        // Charger l'utilisateur dans UserProvider
+        if (userCredential?.user != null) {
+          await userProvider.loadUser(userCredential!.user!.uid);
+        }
 
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/home');
@@ -69,7 +76,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInWithGoogle();
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      
+      final userCredential = await authService.signInWithGoogle();
+
+      // Charger l'utilisateur dans UserProvider
+      if (userCredential?.user != null) {
+        await userProvider.loadUser(userCredential!.user!.uid);
+      }
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -109,8 +123,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -178,6 +190,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
+                      cursorColor: Colors.black87,
+                      style: GoogleFonts.poppins(
+                        color: Colors.black87,
+                        fontSize: 16,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Email',
                         hintText: 'exemple@email.com',
@@ -187,6 +204,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         filled: true,
                         fillColor: Colors.white,
+                        labelStyle: GoogleFonts.poppins(
+                          color: Colors.black54,
+                        ),
+                        floatingLabelStyle: GoogleFonts.poppins(
+                          color: Colors.blueGrey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintStyle: GoogleFonts.poppins(
+                          color: Colors.black38,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -206,6 +233,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _signInWithEmail(),
+                      cursorColor: Colors.black87,
+                      style: GoogleFonts.poppins(
+                        color: Colors.black87,
+                        fontSize: 16,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Mot de passe',
                         prefixIcon: Icon(Icons.lock_outline),
@@ -226,6 +258,16 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         filled: true,
                         fillColor: Colors.white,
+                        labelStyle: GoogleFonts.poppins(
+                          color: Colors.black54,
+                        ),
+                        floatingLabelStyle: GoogleFonts.poppins(
+                          color: Colors.blueGrey.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        hintStyle: GoogleFonts.poppins(
+                          color: Colors.black38,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {

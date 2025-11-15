@@ -8,14 +8,18 @@ import 'package:dualingocoran/screens/profile_screen.dart';
 import 'package:dualingocoran/screens/lesson_preview_screen.dart';
 import 'package:dualingocoran/screens/settings_screen.dart';
 import 'package:dualingocoran/screens/progression_screen.dart';
+import 'package:dualingocoran/screens/signup_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
 import 'package:dualingocoran/services/auth_service.dart';
 import 'package:dualingocoran/services/theme_provider.dart';
+import 'package:dualingocoran/services/user_provider.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:dualingocoran/utils/translation_helper.dart';
 import 'package:dualingocoran/screens/login_screen.dart';
+import 'package:dualingocoran/screens/onboarding_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -35,350 +39,135 @@ Future<void> verifierLecons() async {
 
       // ➝ Nouvelle leçon : Relative Pronouns
       print("📝 Ajout de la leçon: Relative Pronouns");
-      await FirebaseFirestore.instance.collection('lessons').doc('Relative Pronouns').set({
-        "category": "Pronouns",
-
-        "description": {
-          "ar":
-              "تعلّم كيفية استخدام الأسماء الموصولة في اللغة العربية: الَّذِي، الَّتِي، الَّذِينَ، اللَّائِي.",
-          "en":
-              "Learn how to use Arabic relative pronouns: الَّذِي, الَّتِي, الَّذِينَ, اللَّائِي.",
-          "fr":
-              "Apprenez à utiliser les pronoms relatifs arabes : الَّذِي, الَّتِي, الَّذِينَ, اللَّائِي.",
-        },
-
-        "exercises": [
-          {
-            "answer": {"ar": "الَّذِي", "en": "الَّذِي", "fr": "الَّذِي"},
-            "options": {
-              "ar": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
-              "en": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
-              "fr": ["الَّذِينَ", "اللَّائِي", "الَّذِي", "الَّتِي"],
-            },
-            "question": {
-              "ar": "أي اسم موصول يُستخدم لعبارة: الرجل الذي يصلي؟",
-              "en": "Which relative pronoun is used for: 'The man who prays'?",
-              "fr":
-                  "Quel pronom relatif est utilisé pour : 'L'homme qui prie' ?",
-            },
-            "type": "multiple_choice",
-          },
-
-          {
-            "answer": {"ar": "الَّتِي", "en": "الَّتِي", "fr": "الَّتِي"},
-            "options": {
-              "ar": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-              "en": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-              "fr": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-            },
-            "question": {
-              "ar": "تريد أن تقول: المرأة التي تقرأ. أي اسم موصول تستخدم؟",
-              "en": "You want to say: 'The woman who reads.' What do you use?",
-              "fr":
-                  "Vous voulez dire : 'La femme qui lit.' Lequel utilisez-vous ?",
-            },
-            "type": "multiple_choice",
-          },
-
-          {
-            "answer": {"ar": "الَّذِينَ", "en": "الَّذِينَ", "fr": "الَّذِينَ"},
-            "options": {
-              "ar": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
-              "en": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
-              "fr": ["الَّذِي", "اللَّائِي", "الَّذِينَ", "الَّتِي"],
-            },
-            "question": {
-              "ar": "اختر الاسم الموصول الصحيح: الرجال الذين يؤمنون ناجحون.",
+      await FirebaseFirestore.instance
+          .collection('lessons')
+          .doc('Independent Pronouns - Masculine')
+          .set({
+            "category": "Pronouns",
+            "title": "Dual & Inanimate Pronouns",
+            "section": "Leçon 4",
+            "description": {
+              "ar":
+                  "تعلّم الضمائر للمثنى وللجماد: هُمَا (هما)، كُمَا (أنتما)، هَا (ها). تُستخدم هذه الضمائر في القرآن الكريم للإشارة إلى شخصين أو أشياء غير عاقلة.",
               "en":
-                  "Pick the correct pronoun: 'Those (men) who believe are successful.'",
+                  "Learn the dual and inanimate pronouns in Arabic: هُمَا (they two), كُمَا (you two), and هَا (her/it). These pronouns appear in the Qur'an to refer to two persons or non-living things.",
               "fr":
-                  "Choisissez le pronom correct : 'Ceux (hommes) qui croient sont réussis.'",
+                  "Apprends les pronoms du duel et de l’inanimé en arabe : هُمَا (eux deux), كُمَا (vous deux), et هَا (elle / cela). Ces pronoms apparaissent souvent dans le Coran pour désigner deux personnes ou des objets.",
             },
-            "type": "multiple_choice",
-          },
-
-          {
-            "answer": {"ar": "اللَّائِي", "en": "اللَّائِي", "fr": "اللَّائِي"},
-            "options": {
-              "ar": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
-              "en": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
-              "fr": ["الَّذِي", "الَّذِينَ", "الَّتِي", "اللَّائِي"],
-            },
-            "question": {
-              "ar": "أي اسم موصول يُستخدم لجماعة من النساء؟",
-              "en": "Which one is used for groups of women?",
-              "fr": "Lequel est utilisé pour des groupes de femmes ?",
-            },
-            "type": "multiple_choice",
-          },
-
-          {
-            "instruction": {
-              "ar": "صل كل اسم موصول عربي باستخدامه الصحيح.",
-              "en": "Match the Arabic relative pronoun to its correct use.",
-              "fr":
-                  "Associez chaque pronom relatif arabe à son utilisation correcte.",
-            },
-            "options": {
-              "ar": [
-                "الَّذِي",
-                "الَّتِي",
-                "الَّذِينَ",
-                "اللَّائِي",
-                "الذي",
-                "التي",
-                "الذين",
-                "اللاءي",
-              ],
-              "en": [
-                "الَّذِي",
-                "الَّتِي",
-                "الَّذِينَ",
-                "اللَّائِي",
-                "who (masculine)",
-                "who (feminine)",
-                "those who (masc.)",
-                "those who (fem.)",
-              ],
-              "fr": [
-                "الَّذِي",
-                "الَّتِي",
-                "الَّذِينَ",
-                "اللَّائِي",
-                "qui (masculin)",
-                "qui (féminin)",
-                "ceux qui (masc.)",
-                "celles qui (fém.)",
-              ],
-            },
-            "pairs": [
+            "words": [
               {
-                "from": "الَّذِي",
-                "to": {
-                  "ar": "الذي",
-                  "en": "who (masculine)",
-                  "fr": "qui (masculin)",
+                "word": "هُمَا",
+                "translation": "They two",
+                "description": "Refers to two people or things.",
+                "example": {
+                  "ar": "اللَّهُ خَلَقَهُمَا (الله خلقهما)",
+                  "en": "Allah created both of them.",
+                  "fr": "Allah les a tous deux créés.",
+                },
+                "audioUrl": "audio/humaa.mp3",
+              },
+              {
+                "word": "كُمَا",
+                "translation": "You two",
+                "description": "Used when addressing two people.",
+                "example": {
+                  "ar": "أَنْتُمَا تُصَلِّيَانِ (أنتما تصليان)",
+                  "en": "You two pray.",
+                  "fr": "Vous deux priez.",
+                },
+                "audioUrl": "audio/kumaa.mp3",
+              },
+              {
+                "word": "هَا",
+                "translation": "Her / It",
+                "description": "Refers to a feminine or inanimate object.",
+                "example": {
+                  "ar": "رَأَيْتُهَا (رأيتها)",
+                  "en": "I saw her / it.",
+                  "fr": "Je l’ai vue / je l’ai vu (objet).",
+                },
+                "audioUrl": "audio/haa.mp3",
+              },
+            ],
+            "exercises": [
+              {
+                "type": "multiple_choice",
+                "question": "Which pronoun means 'they two'?",
+                "options": ["هُمَا", "كُمَا", "هَا", "هُمْ"],
+                "answer": "هُمَا",
+              },
+              {
+                "type": "multiple_choice",
+                "question": "What does 'كُمَا' mean?",
+                "options": ["You two", "They", "She", "We two"],
+                "answer": "You two",
+              },
+              {
+                "type": "true_false",
+                "question": "هَا is used for masculine nouns.",
+                "answer": false,
+              },
+              {
+                "type": "audio_choice",
+                "question": "Listen and choose the correct pronoun you hear.",
+                "audioUrl": "audio/humaa.mp3",
+                "options": ["هُمَا", "كُمَا", "هَا", "هُمْ"],
+                "answer": "هُمَا",
+              },
+              {
+                "type": "drag_drop",
+                "question":
+                    "Match each Arabic pronoun with its English meaning.",
+                "pairs": {
+                  "هُمَا": "They two",
+                  "كُمَا": "You two",
+                  "هَا": "Her / It",
                 },
               },
               {
-                "from": "الَّتِي",
-                "to": {
-                  "ar": "التي",
-                  "en": "who (feminine)",
-                  "fr": "qui (féminin)",
-                },
+                "type": "true_false",
+                "question": "كُمَا can refer to two men or two women.",
+                "answer": true,
               },
               {
-                "from": "الَّذِينَ",
-                "to": {
-                  "ar": "الذين",
-                  "en": "those who (masc.)",
-                  "fr": "ceux qui (masculin)",
-                },
+                "type": "multiple_choice",
+                "question":
+                    "Complete the sentence: اللَّهُ خَلَقَ ___ (Allah created both of them).",
+                "options": ["هُمَا", "كُمَا", "هَا", "هُمْ"],
+                "answer": "هُمَا",
               },
               {
-                "from": "اللَّائِي",
-                "to": {
-                  "ar": "اللاءي",
-                  "en": "those who (fem.)",
-                  "fr": "celles qui (féminin)",
+                "type": "audio_choice",
+                "question":
+                    "Listen to the audio and select the correct translation.",
+                "audioUrl": "audio/haa.mp3",
+                "options": ["She / It", "You two", "They two", "He"],
+                "answer": "She / It",
+              },
+              {
+                "type": "drag_drop",
+                "question":
+                    "Complete the phrase: أَنْتُمَا ___ (You two pray).",
+                "sentence": "أَنْتُمَا ___",
+                "choices": [
+                  "تُصَلِّيَانِ",
+                  "يُصَلُّونَ",
+                  "تَدْرُسَانِ",
+                  "تَقْرَآنِ",
+                ],
+                "answer": "تُصَلِّيَانِ",
+              },
+              {
+                "type": "pairs",
+                "question": "Match each sentence with its translation.",
+                "pairs": {
+                  "هُمَا يَدْرُسَانِ الْقُرْآنَ": "They two study the Qur’an.",
+                  "رَأَيْتُهَا فِي الْمَسْجِدِ": "I saw her in the mosque.",
+                  "كُمَا تَقْرَآنِ الْكِتَابَ": "You two read the book.",
                 },
               },
             ],
-            "question": {
-              "ar": "صل كل اسم موصول عربي باستخدامه الصحيح.",
-              "en": "Match the Arabic relative pronoun to its correct use.",
-              "fr":
-                  "Associez chaque pronom relatif arabe à son utilisation correcte.",
-            },
-            "type": "pairs",
-          },
-
-          {
-            "answer": false,
-            "question": {
-              "ar": "اللَّائِي يمكن استخدامها لمجموعة من الرجال.",
-              "en": "“اللَّائِي” can be used for a group of men.",
-              "fr": "« اللَّائِي » peut être utilisé pour un groupe d'hommes.",
-            },
-            "type": "true_false",
-          },
-
-          {
-            "answer": true,
-            "question": {
-              "ar": "الَّتِي تُستخدم للأسماء المفردة المؤنثة.",
-              "en": "“الَّتِي” is used for singular feminine nouns.",
-              "fr":
-                  "« الَّتِي » est utilisé pour les noms féminins singuliers.",
-            },
-            "type": "true_false",
-          },
-
-          {
-            "answer": {"ar": "الَّذِي", "en": "الَّذِي", "fr": "الَّذِي"},
-            "audioUrl": "audio/allathi.mp3",
-            "options": {
-              "ar": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-              "en": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-              "fr": ["الَّتِي", "الَّذِي", "الَّذِينَ", "اللَّائِي"],
-            },
-            "question": {
-              "ar": "أي اسم موصول تسمعه؟",
-              "en": "Which pronoun do you hear?",
-              "fr": "Quel pronom entendez-vous ?",
-            },
-            "type": "audio_choice",
-          },
-
-          {
-            "answer": {"ar": "الَّذِينَ", "en": "الَّذِينَ", "fr": "الَّذِينَ"},
-            "audioUrl": "audio/allatheena.mp3",
-            "options": {
-              "ar": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
-              "en": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
-              "fr": ["اللَّائِي", "الَّذِينَ", "الَّتِي", "الَّذِي"],
-            },
-            "question": {
-              "ar": "استمع واختر: ما الذي تسمعه؟",
-              "en": "Listen and choose: what do you hear?",
-              "fr": "Écoutez et choisissez : qu'entendez-vous ?",
-            },
-            "type": "audio_choice",
-          },
-
-          {
-            "answer": {
-              "ar": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ",
-              "en": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ",
-              "fr": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ",
-            },
-            "options": {
-              "ar": [
-                "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
-                "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
-                "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
-                "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
-              ],
-              "en": [
-                "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
-                "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
-                "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
-                "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
-              ],
-              "fr": [
-                "الطُّلاَّبُ الَّذِي يَدرُسُونَ",
-                "الطُّلاَّبُ الَّذِينَ يَدرُسُونَ",
-                "الطُّلاَّبُ الَّتِي يَدرُسُونَ",
-                "الطُّلاَّبُ اللَّائِي يَدرُسُونَ",
-              ],
-            },
-            "question": {
-              "ar": "اختر العبارة الصحيحة: الطلاب الذين يدرسون ينجحون.",
-              "en":
-                  "Choose the correct full phrase: 'The students who study succeed.'",
-              "fr":
-                  "Choisissez la phrase correcte : 'Les étudiants qui étudient réussissent.'",
-            },
-            "type": "multiple_choice",
-          },
-        ],
-
-        "lessonOrder": 1,
-        "section": "Basics",
-        "sectionOrder": 3,
-
-        "sectionTitle": {
-          "ar": "الأسماء الموصولة",
-          "en": "Relative Pronouns",
-          "fr": "Pronoms relatifs",
-        },
-
-        "title": {
-          "ar": "الأسماء الموصولة 1 - الذي، التي، الذين، اللائي",
-          "en": "Relative Pronouns 1 - Who, Which, That",
-          "fr": "Pronoms relatifs 1 - Qui, Lequel, Que",
-        },
-
-        "words": [
-          {
-            "description": {
-              "ar": "يُستخدم للأسماء المفردة المذكرة.",
-              "en": "Used for singular masculine nouns.",
-              "fr": "Utilisé pour les noms masculins singuliers.",
-            },
-            "example": {
-              "ar": "الرجلُ الَّذِي يُصَلِّي (الرجل الذي يصلي)",
-              "en": "الرجلُ الَّذِي يُصَلِّي (The man who prays)",
-              "fr": "الرجلُ الَّذِي يُصَلِّي (L'homme qui prie)",
-            },
-            "translation": {
-              "ar": "الذي",
-              "en": "who (masculine)",
-              "fr": "qui (masculin)",
-            },
-            "word": "الَّذِي",
-          },
-
-          {
-            "description": {
-              "ar": "يُستخدم للأسماء المفردة المؤنثة.",
-              "en": "Used for singular feminine nouns.",
-              "fr": "Utilisé pour les noms féminins singuliers.",
-            },
-            "example": {
-              "ar": "المرأةُ الَّتِي تَقرَأُ (المرأة التي تقرأ)",
-              "en": "المرأةُ الَّتِي تَقرَأُ (The woman who reads)",
-              "fr": "المرأةُ الَّتِي تَقرَأُ (La femme qui lit)",
-            },
-            "translation": {
-              "ar": "التي",
-              "en": "who (feminine)",
-              "fr": "qui (féminin)",
-            },
-            "word": "الَّتِي",
-          },
-
-          {
-            "description": {
-              "ar": "يُستخدم لجمع المذكر.",
-              "en": "Used for plural masculine nouns.",
-              "fr": "Utilisé pour les noms masculins pluriels.",
-            },
-            "example": {
-              "ar": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (الطلاب الذين يدرسون)",
-              "en": "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (The students who study)",
-              "fr":
-                  "الطُّلَّابُ الَّذِينَ يَدرُسُونَ (Les étudiants qui étudient)",
-            },
-            "translation": {
-              "ar": "الذين",
-              "en": "those who (masc.)",
-              "fr": "ceux qui (masculin)",
-            },
-            "word": "الَّذِينَ",
-          },
-
-          {
-            "description": {
-              "ar": "يُستخدم لجمع المؤنث.",
-              "en": "Used for plural feminine nouns.",
-              "fr": "Utilisé pour les noms féminins pluriels.",
-            },
-            "example": {
-              "ar": "النِّسَاءُ اللَّائِي يُصَلِّينَ (النساء اللائي يصلين)",
-              "en": "النِّسَاءُ اللَّائِي يُصَلِّينَ (The women who pray)",
-              "fr": "النِّسَاءُ اللَّائِي يُصَلِّينَ (Les femmes qui prient)",
-            },
-            "translation": {
-              "ar": "اللائي",
-              "en": "those who (fem.)",
-              "fr": "celles qui (féminin)",
-            },
-            "word": "اللَّائِي",
-          },
-        ],
-      });
+          });
 
       print("✅ Leçon 'Negation and Exclusion' ajoutée avec succès!");
     } else {
@@ -394,12 +183,12 @@ void main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Ajouter la nouvelle leçon
-  // await verifierLecons();
+  //await verifierLecons();
 
   runApp(CoranLinguaApp());
 }
 
-const bool kAuthGuardEnabledForTesting = true;
+const bool kAuthGuardEnabledForTesting = false;
 
 class CoranLinguaApp extends StatelessWidget {
   const CoranLinguaApp({super.key});
@@ -410,6 +199,7 @@ class CoranLinguaApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (context) => LanguageProvider()),
         ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        ChangeNotifierProvider(create: (context) => UserProvider()),
         Provider<AuthService>(create: (context) => AuthService()),
       ],
       child: Consumer2<LanguageProvider, ThemeProvider>(
@@ -428,10 +218,15 @@ class CoranLinguaApp extends StatelessWidget {
                 ],
                 supportedLocales: AppLocalizations.supportedLocales,
                 locale: languageProvider.currentLocale,
+                // Routes
+                routes: {
+                  '/home': (context) => MainScreen(),
+                  '/login': (context) => LoginScreen(),
+                },
                 // Temporairement désactivé pour les tests via kAuthGuardEnabledForTesting
                 home: kAuthGuardEnabledForTesting
                     ? (snapshot.hasData ? MainScreen() : LoginScreen())
-                    : MainScreen(),
+                    : InitialScreen(),
                 debugShowCheckedModeBanner: false,
                 // showPerformanceOverlay: true,
               );
@@ -553,6 +348,56 @@ class CoranLinguaApp extends StatelessWidget {
   }
 }
 
+class InitialScreen extends StatefulWidget {
+  const InitialScreen({super.key});
+
+  @override
+  State<InitialScreen> createState() => _InitialScreenState();
+}
+
+class _InitialScreenState extends State<InitialScreen> {
+  bool _isLoading = true;
+  bool _showOnboarding = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+    setState(() {
+      _showOnboarding = !onboardingCompleted;
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0F0C29), Color(0xFF24243e), Color(0xFF302B63)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Center(
+            child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
+          ),
+        ),
+      );
+    }
+
+    return _showOnboarding ? OnboardingScreen() : MainScreen();
+  }
+}
+
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
@@ -562,19 +407,23 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  int _previousIndex = 0;
 
   static final List<Widget> _screens = [
+    SignupScreen(),
     RoadmapBubbleScreen(),
-    ExercisesScreen(),
     ProgressionScreen(),
     ProfilScreen(),
     SettingsScreen(),
   ];
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    if (index != _selectedIndex) {
+      setState(() {
+        _previousIndex = _selectedIndex;
+        _selectedIndex = index;
+      });
+    }
   }
 
   Widget _buildNavItem(int index, IconData icon, String labelKey) {
@@ -624,9 +473,6 @@ class _MainScreenState extends State<MainScreen> {
                     case 'lessons':
                       label = localizations.lessons;
                       break;
-                    case 'exercises':
-                      label = localizations.exercises;
-                      break;
                     case 'progression':
                       label = localizations.progression;
                       break;
@@ -665,7 +511,50 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: AnimatedSwitcher(
+        duration: Duration(milliseconds: 400),
+        switchInCurve: Curves.easeInOutCubic,
+        switchOutCurve: Curves.easeInOutCubic,
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          // Déterminer la direction de la transition
+          final isMovingForward = _selectedIndex > _previousIndex;
+
+          // Animation combinée : Slide + Fade + Scale pour un effet fluide et moderne
+          return SlideTransition(
+            position:
+                Tween<Offset>(
+                  begin: Offset(isMovingForward ? 0.3 : -0.3, 0.0),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: FadeTransition(
+              opacity: Tween<double>(begin: 0.0, end: 1.0).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Interval(0.0, 0.7, curve: Curves.easeOut),
+                ),
+              ),
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.96, end: 1.0).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+                child: child,
+              ),
+            ),
+          );
+        },
+        child: Container(
+          key: ValueKey<int>(_selectedIndex),
+          child: _screens[_selectedIndex],
+        ),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -689,10 +578,9 @@ class _MainScreenState extends State<MainScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildNavItem(0, Icons.school, 'lessons'),
-                _buildNavItem(1, Icons.assignment, 'exercises'),
-                _buildNavItem(2, Icons.trending_up, 'progression'),
-                _buildNavItem(3, Icons.person, 'profile'),
-                _buildNavItem(4, Icons.settings, 'settings'),
+                _buildNavItem(1, Icons.trending_up, 'progression'),
+                _buildNavItem(2, Icons.person, 'profile'),
+                _buildNavItem(3, Icons.settings, 'settings'),
               ],
             ),
           ),

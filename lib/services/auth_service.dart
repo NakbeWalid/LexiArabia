@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dualingocoran/services/user_service.dart';
 
 /// Service pour gérer l'authentification Firebase
 class AuthService {
@@ -28,17 +29,14 @@ class AuthService {
       // Mettre à jour le nom d'affichage
       await userCredential.user?.updateDisplayName(name);
 
-      // Créer le document utilisateur dans Firestore
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'uid': userCredential.user!.uid,
+      // Créer le document utilisateur dans Firestore avec la structure complète
+      await UserService.createUser(userCredential.user!.uid, {
+        'username': name,
         'email': email,
-        'name': name,
-        'createdAt': FieldValue.serverTimestamp(),
-        'xp': 0,
-        'streak': 0,
-        'level': 1,
-        'completedLessons': [],
-        'startedLessons': [],
+        'displayName': name,
+        'avatarUrl': '',
+        'bio': '',
+        'nativeLanguage': 'fr', // Par défaut, peut être changé plus tard
       });
 
       return userCredential;
@@ -104,18 +102,14 @@ class AuthService {
           .get();
 
       if (!userDoc.exists) {
-        // Créer le document utilisateur pour les nouveaux utilisateurs
-        await _firestore.collection('users').doc(userCredential.user!.uid).set({
-          'uid': userCredential.user!.uid,
-          'email': userCredential.user!.email,
-          'name': userCredential.user!.displayName ?? 'User',
-          'photoURL': userCredential.user!.photoURL,
-          'createdAt': FieldValue.serverTimestamp(),
-          'xp': 0,
-          'streak': 0,
-          'level': 1,
-          'completedLessons': [],
-          'startedLessons': [],
+        // Créer le document utilisateur pour les nouveaux utilisateurs avec la structure complète
+        await UserService.createUser(userCredential.user!.uid, {
+          'username': userCredential.user!.displayName ?? 'User',
+          'email': userCredential.user!.email ?? '',
+          'displayName': userCredential.user!.displayName ?? 'User',
+          'avatarUrl': userCredential.user!.photoURL ?? '',
+          'bio': '',
+          'nativeLanguage': 'fr', // Par défaut, peut être changé plus tard
         });
       }
 
