@@ -1,6 +1,5 @@
 # 📚 CoranLingua - Application d'Apprentissage de l'Arabe
 
-<div align="center">
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.8.1-02569B?logo=flutter)
 ![Firebase](https://img.shields.io/badge/Firebase-Enabled-FFCA28?logo=firebase)
@@ -10,15 +9,14 @@
 
 [Caractéristiques](#-caractéristiques) • [Installation](#-installation) • [Configuration](#-configuration) • [Utilisation](#-utilisation) • [Structure](#-structure-du-projet)
 
-</div>
 
----
 
-## 📖 À Propos
+
+## À Propos
 
 **CoranLingua** (anciennement DualingOcoran) est une application mobile Flutter dédiée à l'apprentissage de la langue arabe. L'application propose une expérience d'apprentissage gamifiée avec des leçons interactives, des exercices variés, et un système de progression qui motive les utilisateurs à continuer leur apprentissage.
 
-### 🌟 Points Forts
+### Points Forts
 
 - 🎨 Interface utilisateur moderne et intuitive
 - 🌍 Support multilingue (Français, Anglais, Arabe)
@@ -31,7 +29,7 @@
 
 ---
 
-## ✨ Caractéristiques
+## Caractéristiques
 
 ### 📚 Roadmap Interactive
 - Parcours d'apprentissage organisé en sections (Basics, Pronouns, Grammar, etc.)
@@ -101,125 +99,7 @@ Avant de commencer, assurez-vous d'avoir installé :
 
 ---
 
-## 🚀 Installation
 
-### 1. Cloner le Répertoire
-
-```bash
-git clone https://github.com/votre-username/dualingocoran.git
-cd dualingocoran
-```
-
-### 2. Installer les Dépendances
-
-```bash
-flutter pub get
-```
-
-### 3. Configuration Firebase
-
-#### Android
-
-1. Téléchargez le fichier `google-services.json` depuis la console Firebase
-2. Placez-le dans `android/app/google-services.json`
-3. Le fichier est déjà présent dans le projet, mais vérifiez qu'il correspond à votre projet Firebase
-
-#### iOS
-
-1. Téléchargez le fichier `GoogleService-Info.plist` depuis la console Firebase
-2. Placez-le dans `ios/Runner/GoogleService-Info.plist`
-
-#### Configuration Firebase
-
-1. Créez un projet sur [Firebase Console](https://console.firebase.google.com/)
-2. Activez les services suivants :
-   - Authentication (Email/Password et Google)
-   - Cloud Firestore
-   - Firebase Storage
-3. Configurez les règles de sécurité Firestore (voir section Configuration)
-
-### 4. Générer les Fichiers de Localisation
-
-```bash
-flutter gen-l10n
-```
-
-### 5. Lancer l'Application
-
-```bash
-# Android
-flutter run
-
-# iOS
-flutter run
-
-# Web
-flutter run -d chrome
-
-# Windows
-flutter run -d windows
-```
-
----
-
-## ⚙️ Configuration
-
-### Structure de la Base de Données Firestore
-
-L'application utilise Firestore avec les collections suivantes :
-
-#### Collection `lessons`
-Contient les leçons avec leurs exercices et vocabulaire.
-
-Structure d'une leçon :
-```json
-{
-  "title": {
-    "fr": "Titre en français",
-    "en": "Title in English",
-    "ar": "العنوان بالعربية"
-  },
-  "description": {
-    "fr": "Description...",
-    "en": "Description...",
-    "ar": "الوصف..."
-  },
-  "section": "Basics",
-  "sectionOrder": 1,
-  "lessonOrder": 1,
-  "words": [...],
-  "exercises": [...]
-}
-```
-
-#### Collection `users`
-Contient les données utilisateur et leur progression.
-
-Pour plus de détails, consultez [DATABASE_STRUCTURE.md](DATABASE_STRUCTURE.md).
-
-### Règles de Sécurité Firestore
-
-Configurez vos règles Firestore pour la sécurité :
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Users collection
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Lessons collection (read-only for authenticated users)
-    match /lessons/{lessonId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null; // Ajuster selon vos besoins
-    }
-  }
-}
-```
-
----
 
 ## 📱 Utilisation
 
@@ -300,13 +180,8 @@ dualingocoran/
 
 ---
 
-## 🎨 Captures d'Écran
 
-> **📸 Guide Complet :** Consultez [GUIDE_SCREENSHOTS.md](GUIDE_SCREENSHOTS.md) pour un guide détaillé sur l'ajout de captures d'écran.
-
-Pour améliorer le README, ajoutez des captures d'écran dans un dossier `screenshots/` à la racine du projet et référencez-les ci-dessous. Voici les captures recommandées :
-
-### Captures d'Écran Recommandées
+### Captures d'Écran 
 
 1. **Roadmap/Home Screen** - `screenshots/01-roadmap.png`
    - Capture de l'écran principal avec la roadmap des leçons
@@ -334,38 +209,7 @@ Pour améliorer le README, ajoutez des captures d'écran dans un dossier `screen
 7. **Authentication** - `screenshots/07-login.png`
    - Écran de connexion/inscription
 
-**Exemple d'ajout dans le README :**
 
-```markdown
-### 📱 Captures d'Écran
-
-<div align="center">
-  
-![Roadmap](screenshots/01-roadmap.png)
-*Écran principal avec la roadmap interactive*
-
-![Exercices](screenshots/03-exercises.png)
-*Différents types d'exercices interactifs*
-
-![Progression](screenshots/04-progression.png)
-*Tableau de bord de progression*
-
-</div>
-```
-
----
-
-## 🧪 Tests
-
-```bash
-# Exécuter les tests
-flutter test
-
-# Exécuter les tests avec couverture
-flutter test --coverage
-```
-
----
 
 ## 🚧 Développement
 
@@ -399,18 +243,6 @@ flutter test --coverage
 
 ---
 
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! Pour contribuer :
-
-1. Fork le projet
-2. Créez une branche pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
-3. Committez vos changements (`git commit -m 'Add some AmazingFeature'`)
-4. Push vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrez une Pull Request
-
----
-
 ## 📄 Licence
 
 Ce projet est privé et propriétaire. Tous droits réservés.
@@ -419,7 +251,7 @@ Ce projet est privé et propriétaire. Tous droits réservés.
 
 ## 👥 Auteurs
 
-- **Votre Nom** - *Développement initial* - [Votre GitHub](https://github.com/votre-username)
+- Walid Benakmoum - *Développement initial* - [Votre GitHub](https://github.com/votre-username)
 
 ---
 
