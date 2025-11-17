@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/user_provider.dart';
+import '../main.dart';
 import 'signup_screen.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
@@ -40,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         final authService = Provider.of<AuthService>(context, listen: false);
         final userProvider = Provider.of<UserProvider>(context, listen: false);
-        
+
         final userCredential = await authService.signInWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
@@ -52,7 +53,10 @@ class _LoginScreenState extends State<LoginScreen> {
         }
 
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => MainScreen()),
+            (route) => false, // Supprime tous les écrans précédents
+          );
         }
       } on FirebaseAuthException catch (e) {
         setState(() {
@@ -77,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      
+
       final userCredential = await authService.signInWithGoogle();
 
       // Charger l'utilisateur dans UserProvider
@@ -87,18 +91,24 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.of(context).pushReplacementNamed('/home');
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => MainScreen()),
+          (route) => false, // Supprime tous les écrans précédents
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage = _getErrorMessage(e.code);
       });
-    } catch (e) {
+      print('❌ Erreur Firebase Auth: ${e.code} - ${e.message}');
+    } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
+        _errorMessage = 'Une erreur est survenue: ${e.toString()}';
       });
+      print('❌ Erreur inattendue: $e');
+      print('Stack trace: $stackTrace');
     }
   }
 
@@ -116,8 +126,22 @@ class _LoginScreenState extends State<LoginScreen> {
         return 'Trop de tentatives. Réessayez plus tard.';
       case 'operation-not-allowed':
         return 'Opération non autorisée.';
+      case 'sign_in_canceled':
+        return 'La connexion a été annulée.';
+      case 'sign_in_failed':
+        return 'Échec de la connexion Google. Vérifiez votre configuration.';
+      case 'network_error':
+        return 'Erreur de réseau. Vérifiez votre connexion internet.';
+      case 'google_sign_in_error':
+        return 'Erreur lors de la connexion Google.';
+      case 'account-exists-with-different-credential':
+        return 'Un compte existe déjà avec cet email mais avec un autre moyen de connexion.';
+      case 'invalid-credential':
+        return 'Les identifiants fournis sont invalides.';
+      case 'unknown_error':
+        return 'Une erreur inattendue s\'est produite.';
       default:
-        return 'Une erreur est survenue.';
+        return 'Une erreur est survenue: $code';
     }
   }
 
@@ -204,16 +228,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        labelStyle: GoogleFonts.poppins(
-                          color: Colors.black54,
-                        ),
+                        labelStyle: GoogleFonts.poppins(color: Colors.black54),
                         floatingLabelStyle: GoogleFonts.poppins(
                           color: Colors.blueGrey.shade700,
                           fontWeight: FontWeight.w600,
                         ),
-                        hintStyle: GoogleFonts.poppins(
-                          color: Colors.black38,
-                        ),
+                        hintStyle: GoogleFonts.poppins(color: Colors.black38),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -258,16 +278,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         filled: true,
                         fillColor: Colors.white,
-                        labelStyle: GoogleFonts.poppins(
-                          color: Colors.black54,
-                        ),
+                        labelStyle: GoogleFonts.poppins(color: Colors.black54),
                         floatingLabelStyle: GoogleFonts.poppins(
                           color: Colors.blueGrey.shade700,
                           fontWeight: FontWeight.w600,
                         ),
-                        hintStyle: GoogleFonts.poppins(
-                          color: Colors.black38,
-                        ),
+                        hintStyle: GoogleFonts.poppins(color: Colors.black38),
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -333,28 +349,54 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(height: 16),
 
                     // Bouton Google
-                    OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _signInWithGoogle,
-                      icon: Image.asset(
-                        'assets/google_logo.png',
-                        height: 24,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(Icons.g_mobiledata, size: 24);
-                        },
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      label: Text(
-                        'Continuer avec Google',
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoading ? null : _signInWithGoogle,
+                        icon: Image.asset(
+                          'assets/google_logo.png',
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.g_mobiledata,
+                              size: 24,
+                              color: Colors.grey.shade700,
+                            );
+                          },
                         ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white24),
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                        label: Flexible(
+                          child: Text(
+                            'Continuer avec Google',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.grey.shade800,
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ).animate().slideY(delay: 800.ms),
@@ -370,7 +412,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            Navigator.push(
+                            Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => const SignupScreen(),

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dualingocoran/services/user_service.dart';
+import 'package:flutter/services.dart';
 
 /// Service pour gérer l'authentification Firebase
 class AuthService {
@@ -77,12 +78,19 @@ class AuthService {
 
       if (googleUser == null) {
         // L'utilisateur a annulé la connexion
+        print('ℹ️ L\'utilisateur a annulé la connexion Google');
         return null;
       }
+
+      print('✅ Compte Google sélectionné: ${googleUser.email}');
 
       // Obtenir les détails d'authentification depuis la demande
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
+
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        throw Exception('Les tokens d\'authentification Google sont manquants');
+      }
 
       // Créer un nouvel identifiant
       final credential = GoogleAuthProvider.credential(
@@ -90,10 +98,14 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
+      print('✅ Credential créé, connexion à Firebase...');
+
       // Connecter l'utilisateur avec Firebase
       UserCredential userCredential = await _auth.signInWithCredential(
         credential,
       );
+
+      print('✅ Utilisateur connecté à Firebase: ${userCredential.user?.uid}');
 
       // Vérifier si c'est un nouvel utilisateur
       final userDoc = await _firestore
@@ -102,6 +114,7 @@ class AuthService {
           .get();
 
       if (!userDoc.exists) {
+        print('ℹ️ Nouvel utilisateur, création du document...');
         // Créer le document utilisateur pour les nouveaux utilisateurs avec la structure complète
         await UserService.createUser(userCredential.user!.uid, {
           'username': userCredential.user!.displayName ?? 'User',
@@ -111,15 +124,51 @@ class AuthService {
           'bio': '',
           'nativeLanguage': 'fr', // Par défaut, peut être changé plus tard
         });
+        print('✅ Document utilisateur créé');
+      } else {
+        print('ℹ️ Utilisateur existant trouvé');
       }
 
       return userCredential;
+    } on PlatformException catch (e) {
+      print(
+        '❌ Erreur Platform lors de la connexion Google: ${e.code} - ${e.message}',
+      );
+      // Gérer les erreurs spécifiques à la plateforme
+      if (e.code == 'sign_in_canceled') {
+        throw FirebaseAuthException(
+          code: 'sign_in_canceled',
+          message: 'La connexion a été annulée',
+        );
+      } else if (e.code == 'sign_in_failed') {
+        throw FirebaseAuthException(
+          code: 'sign_in_failed',
+          message:
+              'Échec de la connexion Google. Vérifiez votre configuration.',
+        );
+      } else if (e.code == 'network_error') {
+        throw FirebaseAuthException(
+          code: 'network_error',
+          message: 'Erreur de réseau. Vérifiez votre connexion internet.',
+        );
+      }
+      throw FirebaseAuthException(
+        code: 'google_sign_in_error',
+        message:
+            'Erreur lors de la connexion Google: ${e.message ?? "Erreur inconnue"}',
+      );
     } on FirebaseAuthException catch (e) {
-      print('❌ Erreur lors de la connexion Google: ${e.message}');
+      print(
+        '❌ Erreur Firebase Auth lors de la connexion Google: ${e.code} - ${e.message}',
+      );
       rethrow;
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('❌ Erreur inattendue lors de la connexion Google: $e');
-      rethrow;
+      print('Stack trace: $stackTrace');
+      throw FirebaseAuthException(
+        code: 'unknown_error',
+        message: 'Une erreur inattendue s\'est produite: ${e.toString()}',
+      );
     }
   }
 

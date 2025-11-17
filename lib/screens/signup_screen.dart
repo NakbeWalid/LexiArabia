@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/user_provider.dart';
+import '../main.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'login_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -57,7 +59,10 @@ class _SignupScreenState extends State<SignupScreen> {
         }
 
         if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/home');
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => MainScreen()),
+            (route) => false, // Supprime tous les écrans précédents
+          );
         }
       } on FirebaseAuthException catch (e) {
         setState(() {
@@ -73,6 +78,45 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
+  Future<void> _signUpWithGoogle() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+
+      final userCredential = await authService.signInWithGoogle();
+
+      // Charger l'utilisateur dans UserProvider
+      if (userCredential?.user != null) {
+        await userProvider.loadUser(userCredential!.user!.uid);
+      }
+
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => MainScreen()),
+          (route) => false, // Supprime tous les écrans précédents
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = _getErrorMessage(e.code);
+      });
+      print('❌ Erreur Firebase Auth: ${e.code} - ${e.message}');
+    } catch (e, stackTrace) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Une erreur est survenue: ${e.toString()}';
+      });
+      print('❌ Erreur inattendue: $e');
+      print('Stack trace: $stackTrace');
+    }
+  }
+
   String _getErrorMessage(String code) {
     switch (code) {
       case 'email-already-in-use':
@@ -83,8 +127,22 @@ class _SignupScreenState extends State<SignupScreen> {
         return 'Le mot de passe est trop faible.';
       case 'operation-not-allowed':
         return 'Opération non autorisée.';
+      case 'sign_in_canceled':
+        return 'La connexion a été annulée.';
+      case 'sign_in_failed':
+        return 'Échec de la connexion Google. Vérifiez votre configuration.';
+      case 'network_error':
+        return 'Erreur de réseau. Vérifiez votre connexion internet.';
+      case 'google_sign_in_error':
+        return 'Erreur lors de la connexion Google.';
+      case 'account-exists-with-different-credential':
+        return 'Un compte existe déjà avec cet email mais avec un autre moyen de connexion.';
+      case 'invalid-credential':
+        return 'Les identifiants fournis sont invalides.';
+      case 'unknown_error':
+        return 'Une erreur inattendue s\'est produite.';
       default:
-        return 'Une erreur est survenue.';
+        return 'Une erreur est survenue: $code';
     }
   }
 
@@ -316,6 +374,79 @@ class _SignupScreenState extends State<SignupScreen> {
                     ).animate().slideY(delay: 800.ms),
                     SizedBox(height: 16),
 
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.white24)),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'OU',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.white24)),
+                      ],
+                    ).animate().fadeIn(delay: 900.ms),
+                    SizedBox(height: 16),
+
+                    // Bouton Google
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoading ? null : _signUpWithGoogle,
+                        icon: Image.asset(
+                          'assets/google_logo.png',
+                          height: 24,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.g_mobiledata,
+                              size: 24,
+                              color: Colors.grey.shade700,
+                            );
+                          },
+                        ),
+                        label: Flexible(
+                          child: Text(
+                            'Continuer avec Google',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.grey.shade800,
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ).animate().slideY(delay: 1000.ms),
+                    SizedBox(height: 24),
+
                     // Lien connexion
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -325,7 +456,14 @@ class _SignupScreenState extends State<SignupScreen> {
                           style: GoogleFonts.poppins(color: Colors.white70),
                         ),
                         TextButton(
-                          onPressed: () => Navigator.pop(context),
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const LoginScreen(),
+                              ),
+                            );
+                          },
                           child: Text(
                             'Se connecter',
                             style: GoogleFonts.poppins(

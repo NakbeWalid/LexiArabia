@@ -50,7 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             child: SafeArea(
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,15 +128,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                     ),
 
-                    Spacer(),
+                    SizedBox(height: 40),
 
                     // Bouton de sauvegarde
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          ScaffoldMessenger.of(context)
-                              .showSnackBar(
+                          ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 'Paramètres sauvegardés',
@@ -162,6 +161,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ),
+                    SizedBox(height: 20), // Espace en bas pour le scroll
                   ],
                 ),
               ),
@@ -225,8 +225,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: isSelected
                         ? highlightColor
                         : (isDark
-                            ? Colors.white.withOpacity(0.15)
-                            : Colors.black12),
+                              ? Colors.white.withOpacity(0.15)
+                              : Colors.black12),
                     width: 1,
                   ),
                   boxShadow: isDark
@@ -269,11 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     if (isSelected)
-                      Icon(
-                        Icons.check_circle,
-                        color: highlightColor,
-                        size: 24,
-                      ),
+                      Icon(Icons.check_circle, color: highlightColor, size: 24),
                   ],
                 ),
               ),
@@ -328,11 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: colorScheme.primary.withOpacity(isDark ? 0.15 : 0.2),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    icon,
-                    color: colorScheme.primary,
-                    size: 20,
-                  ),
+                  child: Icon(icon, color: colorScheme.primary, size: 20),
                 ),
                 SizedBox(width: 16),
               ],

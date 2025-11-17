@@ -8,7 +8,6 @@ import 'package:dualingocoran/screens/profile_screen.dart';
 import 'package:dualingocoran/screens/lesson_preview_screen.dart';
 import 'package:dualingocoran/screens/settings_screen.dart';
 import 'package:dualingocoran/screens/progression_screen.dart';
-import 'package:dualingocoran/screens/signup_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
@@ -362,17 +361,31 @@ class _InitialScreenState extends State<InitialScreen> {
   @override
   void initState() {
     super.initState();
-    _checkOnboardingStatus();
+    _checkInitialState();
   }
 
-  Future<void> _checkOnboardingStatus() async {
+  Future<void> _checkInitialState() async {
     final prefs = await SharedPreferences.getInstance();
     final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+    // Vérifier l'état d'authentification
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
 
     setState(() {
       _showOnboarding = !onboardingCompleted;
       _isLoading = false;
     });
+
+    // Si l'onboarding est complété mais l'utilisateur n'est pas connecté,
+    // rediriger vers la page de connexion
+    if (mounted && onboardingCompleted && user == null) {
+      // Attendre un peu pour que l'écran de chargement soit visible
+      await Future.delayed(Duration(milliseconds: 300));
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    }
   }
 
   @override
@@ -394,7 +407,22 @@ class _InitialScreenState extends State<InitialScreen> {
       );
     }
 
-    return _showOnboarding ? OnboardingScreen() : MainScreen();
+    // Si l'onboarding n'est pas complété, afficher l'onboarding
+    if (_showOnboarding) {
+      return OnboardingScreen();
+    }
+
+    // Vérifier à nouveau l'authentification avant d'afficher MainScreen
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final user = authService.currentUser;
+
+    // Si l'utilisateur n'est pas connecté, afficher la page de connexion
+    if (user == null) {
+      return LoginScreen();
+    }
+
+    // Sinon, afficher MainScreen
+    return MainScreen();
   }
 }
 
@@ -410,7 +438,6 @@ class _MainScreenState extends State<MainScreen> {
   int _previousIndex = 0;
 
   static final List<Widget> _screens = [
-    SignupScreen(),
     RoadmapBubbleScreen(),
     ProgressionScreen(),
     ProfilScreen(),
@@ -486,18 +513,22 @@ class _MainScreenState extends State<MainScreen> {
                       label = labelKey;
                   }
 
-                  return Text(
-                    label,
-                    style: GoogleFonts.poppins(
-                      color: isSelected
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.6),
-                      fontSize: isSelected ? 10 : 9,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
+                  return Flexible(
+                    child: Text(
+                      label,
+                      style: GoogleFonts.poppins(
+                        color: isSelected
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.6),
+                        fontSize: isSelected ? 9 : 8,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    textAlign: TextAlign.center,
                   );
                 },
               ),
@@ -1027,11 +1058,10 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                     ),
                     // Contenu principal
                     Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
                         // Icône avec effet de brillance dorée
                         Container(
-                          padding: EdgeInsets.all(14),
+                          padding: EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
@@ -1061,16 +1091,17 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                             size: 30,
                           ),
                         ),
-                        SizedBox(width: 20),
+                        SizedBox(width: 12),
                         // Informations de la section
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 currentSectionData['title'] as String,
                                 style: GoogleFonts.poppins(
-                                  fontSize: 22,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                   letterSpacing: 0.8,
@@ -1082,16 +1113,20 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                                     ),
                                   ],
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               SizedBox(height: 4),
                               Text(
                                 currentSectionData['description'] as String,
                                 style: GoogleFonts.poppins(
-                                  fontSize: 15,
+                                  fontSize: 13,
                                   color: Colors.white.withOpacity(0.9),
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.3,
                                 ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -1213,15 +1248,16 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
             ),
             child: Icon(Icons.school, color: Color(0xFFD4AF37), size: 30),
           ),
-          SizedBox(width: 20),
+          SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'Bienvenue dans votre parcours !',
                   style: GoogleFonts.poppins(
-                    fontSize: 22,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     letterSpacing: 0.8,
@@ -1233,16 +1269,20 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                       ),
                     ],
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 6),
                 Text(
                   'Commencez votre apprentissage de l\'arabe',
                   style: GoogleFonts.poppins(
-                    fontSize: 15,
+                    fontSize: 13,
                     color: Colors.white.withOpacity(0.9),
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.3,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -1297,15 +1337,19 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                           Icon(
                             Icons.local_fire_department,
                             color: Colors.white,
-                            size: 24,
+                            size: 20,
                           ),
-                          SizedBox(width: 8),
-                          Text(
-                            '5 jours',
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                          SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '5 jours',
+                              style: GoogleFonts.poppins(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
