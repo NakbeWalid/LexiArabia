@@ -10,7 +10,7 @@ import '../utils/arabic_text_style.dart';
 
 class MultipleChoiceExercise extends StatefulWidget {
   final Exercise exercise;
-  final VoidCallback onNext;
+  final Function(bool) onNext;
 
   const MultipleChoiceExercise({
     super.key,
@@ -126,7 +126,7 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
     print('About to call widget.onNext in 1.5 seconds...');
     Future.delayed(const Duration(milliseconds: 1500), () {
       print('Calling widget.onNext now!');
-      widget.onNext();
+      widget.onNext(isCorrect);
     });
   }
 

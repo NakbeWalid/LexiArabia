@@ -9,7 +9,7 @@ import '../utils/arabic_text_style.dart';
 
 class AudioExercise extends StatefulWidget {
   final Exercise exercise;
-  final VoidCallback onNext;
+  final Function(bool) onNext;
 
   const AudioExercise({
     required this.exercise,
@@ -127,7 +127,7 @@ class _AudioExerciseState extends State<AudioExercise>
       ),
     );
 
-    Future.delayed(const Duration(milliseconds: 1500), widget.onNext);
+    Future.delayed(const Duration(milliseconds: 1500), () => widget.onNext(isCorrect));
   }
 
   void playAudio() async {

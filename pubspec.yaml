@@ -43,6 +43,7 @@ dependencies:
   flutter_animate: ^4.2.0       # Animations modernes
   google_fonts: ^6.1.0          # Polices Google
   flutter_staggered_animations: ^1.1.1  # Animations en cascade
+  phosphor_flutter: ^2.0.0      # Icônes Phosphor
   # Packages pour l'internationalisation
   flutter_localizations:
     sdk: flutter

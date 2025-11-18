@@ -9,7 +9,7 @@ import '../utils/arabic_text_style.dart';
 
 class PairsExercise extends StatefulWidget {
   final Exercise exercise;
-  final VoidCallback onNext;
+  final Function(bool) onNext;
 
   const PairsExercise({
     super.key,
@@ -269,7 +269,7 @@ class _PairsExerciseState extends State<PairsExercise>
         );
 
         // Passer à l'exercice suivant après 2 secondes
-        Future.delayed(const Duration(milliseconds: 2000), widget.onNext);
+        Future.delayed(const Duration(milliseconds: 2000), () => widget.onNext(true)); // Toutes les paires sont correctes
       } else {
         // ❌ CERTAINES RÉPONSES SONT INCORRECTES MAIS ON PASSE QUAND MÊME
         if (mounted) _successController.forward();
@@ -300,7 +300,7 @@ class _PairsExerciseState extends State<PairsExercise>
         );
 
         // Passer à l'exercice suivant même avec des erreurs après 2 secondes
-        Future.delayed(const Duration(milliseconds: 2000), widget.onNext);
+        Future.delayed(const Duration(milliseconds: 2000), () => widget.onNext(false)); // Certaines paires sont incorrectes
       }
     }
   }

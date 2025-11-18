@@ -160,16 +160,24 @@ class UserService {
     int score,
   ) async {
     try {
+      print(
+        '🔄 Début de complétion de la leçon: $lessonId pour l\'utilisateur: $userId',
+      );
       final userRef = _firestore.collection(_usersCollection).doc(userId);
 
       await _firestore.runTransaction((transaction) async {
         final userDoc = await transaction.get(userRef);
         if (userDoc.exists) {
-          final lessonsCompleted =
-              userDoc.data()?['stats']?['lessonsCompleted'] ?? 0;
-          final totalLessons = userDoc.data()?['stats']?['totalLessons'] ?? 0;
+          final userData = userDoc.data()!;
+          final lessonsCompleted = userData['stats']?['lessonsCompleted'] ?? 0;
 
-          transaction.update(userRef, {
+          print('📊 Stats actuelles - lessonsCompleted: $lessonsCompleted');
+          print(
+            '📊 Progress.lessons avant: ${userData['progress']?['lessons']}',
+          );
+
+          // Préparer la mise à jour
+          final updateData = <String, dynamic>{
             'stats.lessonsCompleted': lessonsCompleted + 1,
             'progress.lessons.$lessonId.completed': true,
             'progress.lessons.$lessonId.completedAt':
@@ -177,11 +185,43 @@ class UserService {
             'progress.lessons.$lessonId.score': score,
             'progress.lessons.$lessonId.attempts': FieldValue.increment(1),
             'lastActive': FieldValue.serverTimestamp(),
-          });
+          };
+
+          // S'assurer que progress.lessons existe si nécessaire
+          final progress = userData['progress'] as Map<String, dynamic>?;
+          if (progress == null || !progress.containsKey('lessons')) {
+            print('⚠️ progress.lessons n\'existe pas, initialisation...');
+            updateData['progress.lessons'] = {};
+          }
+
+          transaction.update(userRef, updateData);
+
+          print(
+            '✅ Transaction préparée pour mettre à jour progress.lessons.$lessonId',
+          );
+        } else {
+          print('❌ Document utilisateur non trouvé: $userId');
         }
       });
-    } catch (e) {
+
+      // Vérifier que la mise à jour a bien été effectuée
+      final updatedDoc = await userRef.get();
+      if (updatedDoc.exists) {
+        final updatedData = updatedDoc.data()!;
+        final progressLessons =
+            updatedData['progress']?['lessons'] as Map<String, dynamic>?;
+        print(
+          '✅ Vérification après mise à jour - progress.lessons: $progressLessons',
+        );
+        if (progressLessons != null && progressLessons.containsKey(lessonId)) {
+          print('✅ La leçon $lessonId est bien dans progress.lessons');
+        } else {
+          print('❌ La leçon $lessonId n\'est PAS dans progress.lessons');
+        }
+      }
+    } catch (e, stackTrace) {
       print('❌ Erreur lors de la complétion de la leçon: $e');
+      print('❌ Stack trace: $stackTrace');
     }
   }
 

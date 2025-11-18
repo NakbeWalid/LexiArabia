@@ -13,6 +13,7 @@ class LessonPreviewScreen extends StatefulWidget {
   newWords; // Changed to dynamic to support both old and new structure
   final List<dynamic> exercises;
   final String sectionTitle;
+  final String? lessonId;
 
   const LessonPreviewScreen({
     super.key,
@@ -21,6 +22,7 @@ class LessonPreviewScreen extends StatefulWidget {
     required this.newWords,
     required this.exercises,
     required this.sectionTitle,
+    this.lessonId,
   });
 
   @override
@@ -155,10 +157,13 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
       print("❌ Erreur lors de la conversion des exercices: $e");
     }
 
-    Navigator.of(context).pushReplacement(
+    final result = await Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            ExercisePage(exercises: exercises),
+            ExercisePage(
+          exercises: exercises,
+          lessonId: widget.lessonId,
+        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: animation.drive(
@@ -173,6 +178,11 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
         transitionDuration: const Duration(milliseconds: 300),
       ),
     );
+    
+    // Retourner true si la leçon a été complétée
+    if (result == true && mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override

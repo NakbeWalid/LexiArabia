@@ -28,9 +28,28 @@ class UserModel {
       achievements: (data['achievements'] as Map<String, dynamic>? ?? {}).map(
         (key, value) => MapEntry(key, UserAchievement.fromMap(value)),
       ),
-      studySessions: (data['studySessions'] as List<dynamic>? ?? [])
-          .map((session) => StudySession.fromMap(session))
-          .toList(),
+      studySessions: () {
+        final sessions = data['studySessions'];
+        if (sessions == null) return <StudySession>[];
+        
+        // Gérer le cas où studySessions est une List
+        if (sessions is List) {
+          return sessions
+              .map((session) => StudySession.fromMap(session))
+              .toList();
+        }
+        
+        // Gérer le cas où studySessions est un Map (structure Firestore)
+        if (sessions is Map) {
+          // Convertir le Map en List en prenant les valeurs
+          return (sessions as Map<String, dynamic>)
+              .values
+              .map((session) => StudySession.fromMap(session))
+              .toList();
+        }
+        
+        return <StudySession>[];
+      }(),
       dailyProgress: () {
         final dp = data['dailyProgress'] as Map<String, dynamic>? ?? {};
         // dailyProgress peut avoir deux structures :

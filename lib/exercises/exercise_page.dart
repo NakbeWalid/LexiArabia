@@ -7,13 +7,20 @@ import 'package:dualingocoran/exercises/dragDropExercise.dart';
 import 'package:dualingocoran/exercises/pairs_exercise.dart';
 import 'package:dualingocoran/exercises/true_false_exercise.dart';
 import 'package:dualingocoran/services/daily_limit_service.dart';
+import 'package:dualingocoran/services/user_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 class ExercisePage extends StatefulWidget {
   final List<Exercise> exercises;
+  final String? lessonId;
 
-  const ExercisePage({super.key, required this.exercises});
+  const ExercisePage({
+    super.key,
+    required this.exercises,
+    this.lessonId,
+  });
 
   @override
   State<ExercisePage> createState() => _ExercisePageState();
@@ -24,6 +31,8 @@ class _ExercisePageState extends State<ExercisePage>
   int currentIndex = 0;
   late AnimationController _progressController;
   late AnimationController _celebrationController;
+  int correctAnswers = 0;
+  int totalAnswers = 0;
 
   @override
   void initState() {
@@ -46,7 +55,17 @@ class _ExercisePageState extends State<ExercisePage>
     super.dispose();
   }
 
-  void nextExercise() async {
+  void nextExercise({bool? wasCorrect}) async {
+    // Enregistrer la réponse si fournie
+    if (wasCorrect != null) {
+      setState(() {
+        totalAnswers++;
+        if (wasCorrect) {
+          correctAnswers++;
+        }
+      });
+    }
+
     if (currentIndex < widget.exercises.length - 1) {
       // Animate progress update
       if (mounted) await _progressController.forward();
@@ -70,13 +89,25 @@ class _ExercisePageState extends State<ExercisePage>
       // Incrémenter le compteur de leçons complétées aujourd'hui
       await DailyLimitService.incrementLessonCount();
 
+      // Marquer la leçon comme complétée dans UserProvider si lessonId est fourni
+      // Le champ 'completed' sera créé dans users/{userId}/progress/lessons/{lessonId}/completed
+      if (widget.lessonId != null) {
+        final userProvider = Provider.of<UserProvider>(context, listen: false);
+        final accuracy = widget.exercises.length > 0
+            ? ((correctAnswers / widget.exercises.length) * 100).round()
+            : 0;
+        await userProvider.completeLesson(widget.lessonId!, accuracy);
+      }
+
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => ModernCompletionDialog(
+          totalExercises: widget.exercises.length,
+          correctAnswers: correctAnswers,
           onClose: () {
             Navigator.of(context).pop(); // Close dialog
-            Navigator.of(context).pop(); // Return to roadmap
+            Navigator.of(context).pop(true); // Return to roadmap with result
           },
         ),
       );
@@ -130,31 +161,31 @@ class _ExercisePageState extends State<ExercisePage>
       case 'multiple_choice':
         exerciseWidget = MultipleChoiceExercise(
           exercise: exercise,
-          onNext: nextExercise,
+          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
         );
         break;
       case 'true_false':
         exerciseWidget = TrueFalseExercise(
           exercise: exercise,
-          onNext: nextExercise,
+          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
         );
         break;
       case 'audio_choice':
         exerciseWidget = AudioExercise(
           exercise: exercise,
-          onNext: nextExercise,
+          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
         );
         break;
       case 'drag_drop':
         exerciseWidget = DragDropExercise(
           exercise: exercise,
-          onNext: nextExercise,
+          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
         );
         break;
       case 'pairs':
         exerciseWidget = PairsExercise(
           exercise: exercise,
-          onNext: nextExercise,
+          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
         );
         break;
       default:
@@ -358,11 +389,28 @@ class _ExercisePageState extends State<ExercisePage>
 
 class ModernCompletionDialog extends StatelessWidget {
   final VoidCallback onClose;
+  final int totalExercises;
+  final int correctAnswers;
 
-  const ModernCompletionDialog({super.key, required this.onClose});
+  const ModernCompletionDialog({
+    super.key,
+    required this.onClose,
+    required this.totalExercises,
+    required this.correctAnswers,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Calculer les statistiques réelles
+    final xpEarned = totalExercises * 10; // 10 XP par exercice
+    final accuracy = totalExercises > 0
+        ? ((correctAnswers / totalExercises) * 100).round()
+        : 0;
+    
+    // Récupérer la streak depuis UserProvider
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final streak = userProvider.currentUser?.stats.currentStreak ?? 0;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       child: Container(
@@ -434,9 +482,9 @@ class ModernCompletionDialog extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildStat("XP Earned", "100", Icons.star),
-                _buildStat("Streak", "🔥 6", Icons.local_fire_department),
-                _buildStat("Accuracy", "95%", Icons.access_alarm),
+                _buildStat("XP Earned", "$xpEarned", Icons.star),
+                _buildStat("Streak", streak > 0 ? "🔥 $streak" : "🔥 0", Icons.local_fire_department),
+                _buildStat("Accuracy", "$accuracy%", Icons.trending_up),
               ],
             ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.3),
 

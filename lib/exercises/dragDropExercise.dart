@@ -9,7 +9,7 @@ import '../utils/arabic_text_style.dart';
 
 class DragDropExercise extends StatefulWidget {
   final Exercise exercise;
-  final VoidCallback onNext;
+  final Function(bool) onNext;
 
   const DragDropExercise({
     super.key,
@@ -149,7 +149,7 @@ class _DragDropExerciseState extends State<DragDropExercise>
 
       if (isCorrect) {
         // ✅ RÉPONSE CORRECTE
-        Future.delayed(const Duration(milliseconds: 1000), widget.onNext);
+        Future.delayed(const Duration(milliseconds: 1000), () => widget.onNext(true));
 
         print(
           '🎉 Exercise completed successfully! Calling onNext in 2 seconds...',
@@ -184,7 +184,7 @@ class _DragDropExerciseState extends State<DragDropExercise>
 
         Future.delayed(const Duration(milliseconds: 1000), () {
           print('🚀 Calling widget.onNext now!');
-          widget.onNext();
+          widget.onNext(true); // Réponse correcte
         });
       } else {
         // ❌ RÉPONSE INCORRECTE MAIS ON PASSE QUAND MÊME
@@ -222,7 +222,7 @@ class _DragDropExerciseState extends State<DragDropExercise>
         // Passer à l'exercice suivant même avec une réponse incorrecte
         Future.delayed(const Duration(milliseconds: 2000), () {
           print('🚀 Calling widget.onNext now (with wrong answer)!');
-          widget.onNext();
+          widget.onNext(false); // Réponse incorrecte
         });
       }
     }

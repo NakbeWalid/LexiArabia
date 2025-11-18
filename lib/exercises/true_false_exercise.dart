@@ -8,7 +8,7 @@ import '../utils/arabic_text_style.dart';
 
 class TrueFalseExercise extends StatefulWidget {
   final Exercise exercise;
-  final VoidCallback onNext;
+  final Function(bool) onNext;
 
   const TrueFalseExercise({
     super.key,
@@ -117,7 +117,7 @@ class _TrueFalseExerciseState extends State<TrueFalseExercise>
     print('True/False: About to call widget.onNext in 1.5 seconds...');
     Future.delayed(const Duration(milliseconds: 1500), () {
       print('True/False: Calling widget.onNext now!');
-      widget.onNext();
+      widget.onNext(isCorrect);
     });
   }
 
@@ -299,12 +299,13 @@ class _TrueFalseExerciseState extends State<TrueFalseExercise>
             child: Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (showResult)
                     Icon(
                       isCorrect ? Icons.check_circle : Icons.cancel,
                       color: Colors.white,
-                      size: 28,
+                      size: 24,
                     )
                   else
                     Icon(
@@ -312,36 +313,40 @@ class _TrueFalseExerciseState extends State<TrueFalseExercise>
                       color: isSelected
                           ? Colors.white
                           : Colors.white.withOpacity(0.7),
-                      size: 28,
+                      size: 24,
                     ),
-                  SizedBox(width: 12),
-                  Text(
-                    label,
-                    style: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: (showResult || isSelected)
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.9),
+                  SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: GoogleFonts.poppins(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: (showResult || isSelected)
+                            ? Colors.white
+                            : Colors.white.withOpacity(0.9),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (showResult && isCorrect)
                     Container(
-                      margin: EdgeInsets.only(left: 12),
+                      margin: EdgeInsets.only(left: 8),
                       padding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                        horizontal: 8,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         "+10 XP",
                         style: GoogleFonts.poppins(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                          fontSize: 11,
                         ),
                       ),
                     ),

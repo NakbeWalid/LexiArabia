@@ -22,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dualingocoran/services/learning_progress_service.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 Future<void> verifierLecons() async {
   try {
@@ -1603,6 +1604,30 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                 );
               }
 
+              // Déterminer l'icône basée sur lessonOrder (1-5)
+              final lessonOrder = (data['lessonOrder'] as int?) ?? 1;
+              final lessonIcon = _getLessonIcon(lessonOrder);
+              print('🔍 Lesson Order: $lessonOrder, Icon: $lessonIcon');
+
+              // Obtenir l'ID de la leçon
+              final lessonId = (item['lesson'] as QueryDocumentSnapshot).id;
+
+              // Vérifier l'état de la leçon depuis UserProvider
+              // Le champ 'completed' est dans users/{userId}/progress/lessons/{lessonId}/completed
+              final userProvider = Provider.of<UserProvider>(
+                context,
+                listen: true,
+              );
+              final lessonProgress =
+                  userProvider.currentUser?.progress.lessons[lessonId];
+              final isCompleted = lessonProgress?.completed ?? false;
+              final isStarted = lessonProgress != null;
+
+              // Debug pour vérifier l'état
+              if (isCompleted) {
+                print('✅ Leçon $lessonId est complétée');
+              }
+
               return _buildEnhancedLessonBubble(
                 context,
                 titleText,
@@ -1612,8 +1637,10 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                 originalIndex, // Index pour les animations (dans _lessons)
                 index, // Index pour le positionnement (dans roadmapItems)
                 roadmapItems.length, // Nombre total d'items dans la roadmap
-                data['completed'] == true,
-                data['started'] == true,
+                isCompleted,
+                isStarted,
+                lessonIcon, // Icône spécifique pour cette leçon
+                lessonId, // ID de la leçon pour la complétion
               );
             }
           }),
@@ -1698,6 +1725,23 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     );
   }
 
+  PhosphorIconData _getLessonIcon(int lessonOrder) {
+    // Liste d'icônes variées (5 icônes pour lessonOrder 1-5)
+    final iconOptions = [
+      PhosphorIcons.graduationCap(PhosphorIconsStyle.regular),
+      PhosphorIcons.book(PhosphorIconsStyle.regular),
+      PhosphorIcons.lightbulb(PhosphorIconsStyle.regular),
+      PhosphorIcons.star(PhosphorIconsStyle.regular),
+      PhosphorIcons.trophy(PhosphorIconsStyle.regular),
+    ];
+
+    // Convertir lessonOrder (1-5) en index (0-4)
+    // Si lessonOrder est > 5, on utilise le modulo pour revenir dans la plage
+    final index = (lessonOrder - 1) % 5;
+
+    return iconOptions[index];
+  }
+
   Widget _buildEnhancedLessonBubble(
     BuildContext context,
     String title,
@@ -1709,6 +1753,8 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     int totalItems, // Nombre total d'items dans la roadmap
     bool isCompleted,
     bool isStarted,
+    PhosphorIconData lessonIcon, // Icône spécifique pour cette leçon
+    String lessonId, // ID de la leçon
   ) {
     if (animationIndex >= _bubbleAnimations.length) return SizedBox.shrink();
 
@@ -1724,8 +1770,8 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     );
 
     return Positioned(
-      left: position.dx - 60,
-      top: position.dy - 60,
+      left: position.dx - 50,
+      top: position.dy - 50,
       child: AnimatedBuilder(
         animation: _bubbleAnimations[animationIndex],
         builder: (context, child) {
@@ -1736,8 +1782,9 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
             child: Transform.translate(
               offset: Offset(0, (1 - animationValue) * 100),
               child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  // Naviguer vers la leçon
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => LessonPreviewScreen(
@@ -1746,160 +1793,80 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                         newWords: newWords,
                         exercises: exercises,
                         sectionTitle: 'Leçon',
+                        lessonId: lessonId,
                       ),
                     ),
                   );
+
+                  // Rafraîchir la roadmap si la leçon a été complétée
+                  if (result == true && mounted) {
+                    // Recharger les données utilisateur depuis Firestore pour avoir les dernières données
+                    final userProvider = Provider.of<UserProvider>(
+                      context,
+                      listen: false,
+                    );
+                    final currentUser = FirebaseAuth.instance.currentUser;
+                    if (currentUser != null) {
+                      await userProvider.loadUser(currentUser.uid);
+                    }
+                    setState(() {
+                      // Le setState déclenchera un rebuild avec les nouvelles données
+                    });
+                  }
                 },
                 child: Container(
-                  width: 120,
-                  height: 120,
+                  width: 100,
+                  height: 100,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
+                    gradient: RadialGradient(
                       colors: [
-                        bubbleInfo['color'] as Color,
-                        (bubbleInfo['color'] as Color).withOpacity(0.7),
                         (bubbleInfo['color'] as Color).withOpacity(0.9),
+                        (bubbleInfo['color'] as Color).withOpacity(0.7),
+                        (bubbleInfo['color'] as Color).withOpacity(0.5),
                       ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                      center: Alignment.topLeft,
+                      radius: 1.2,
                     ),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isCompleted ? Colors.green : Colors.white,
-                      width: 3,
+                      color: isCompleted
+                          ? Colors.green.withOpacity(0.8)
+                          : Colors.white.withOpacity(0.3),
+                      width: 2.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (bubbleInfo['color'] as Color).withOpacity(0.5),
-                        blurRadius: 25,
-                        offset: Offset(0, 10),
-                        spreadRadius: 3,
+                        color: (bubbleInfo['color'] as Color).withOpacity(0.4),
+                        blurRadius: 20,
+                        offset: Offset(0, 8),
+                        spreadRadius: 2,
                       ),
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 15,
-                        offset: Offset(0, 5),
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 12,
+                        offset: Offset(0, 4),
                       ),
                     ],
                   ),
                   child: Stack(
                     children: [
-                      // Icône principale avec effet de brillance
-                      Positioned(
-                        top: 15,
-                        left: 0,
-                        right: 0,
-                        child: ShaderMask(
-                          shaderCallback: (bounds) => LinearGradient(
-                            colors: [
-                              Colors.white,
-                              Colors.white.withOpacity(0.8),
-                              Colors.white,
-                            ],
-                          ).createShader(bounds),
-                          child: Icon(
-                            bubbleInfo['icon'] as IconData,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                        ),
-                      ),
-
-                      // Nom de la leçon
-                      Positioned(
-                        bottom: 20,
-                        left: 6,
-                        right: 6,
-                        child: Text(
-                          _getShortTitle(title),
-                          style: GoogleFonts.poppins(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            height: 1.1,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-
-                      // Texte ou numéro
-                      if (bubbleInfo['text'] != null)
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            padding: EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.95),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Text(
-                              bubbleInfo['text'] as String,
-                              style: GoogleFonts.poppins(
-                                color: bubbleInfo['color'] as Color,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                      // Indicateur de statut avec animation
-                      if (isCompleted)
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: AnimatedBuilder(
-                            animation: _pulseController,
-                            builder: (context, child) {
-                              return Transform.scale(
-                                scale: 1.0 + (0.2 * _pulseController.value),
-                                child: Container(
-                                  padding: EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.95),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.green.withOpacity(0.6),
-                                        blurRadius: 12,
-                                        offset: Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 18,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-
-                      // Effet de brillance rotative
+                      // Effet de brillance subtil en arrière-plan
                       AnimatedBuilder(
                         animation: _floatingController,
                         builder: (context, child) {
                           return Transform.rotate(
-                            angle: _floatingController.value * 2 * math.pi,
+                            angle: _floatingController.value * 0.5 * math.pi,
                             child: Container(
                               decoration: BoxDecoration(
                                 gradient: RadialGradient(
                                   colors: [
-                                    Colors.white.withOpacity(0.1),
+                                    Colors.white.withOpacity(0.15),
                                     Colors.transparent,
                                   ],
+                                  center: Alignment(
+                                    -0.5 + (_floatingController.value * 0.3),
+                                    -0.5 + (_floatingController.value * 0.3),
+                                  ),
                                 ),
                                 shape: BoxShape.circle,
                               ),
@@ -1907,6 +1874,67 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                           );
                         },
                       ),
+
+                      // Icône principale centrée et plus grande
+                      Center(
+                        child: PhosphorIcon(
+                          lessonIcon,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+
+                      // Badge de statut (complété/en cours)
+                      if (isCompleted)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.green.withOpacity(0.6),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        )
+                      else if (isStarted)
+                        Positioned(
+                          top: 6,
+                          right: 6,
+                          child: Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFFF9800),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFFFF9800).withOpacity(0.6),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.play_arrow,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1934,28 +1962,6 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     final y = baseY;
 
     return Offset(x, y);
-  }
-
-  String _getShortTitle(String title) {
-    // Si le titre est court, le retourner tel quel
-    if (title.length <= 20) return title;
-
-    // Prendre les 2-3 premiers mots maximum
-    final words = title.split(' ');
-    if (words.length <= 2) {
-      // Si 2 mots ou moins, prendre les 18 premiers caractères en coupant au dernier espace
-      if (title.length > 18) {
-        final lastSpace = title.lastIndexOf(' ', 18);
-        if (lastSpace > 0) {
-          return title.substring(0, lastSpace);
-        }
-        return title.substring(0, 18);
-      }
-      return title;
-    }
-
-    // Prendre les 2 premiers mots
-    return '${words[0]} ${words[1]}';
   }
 
   Map<String, dynamic> _getEnhancedBubbleInfo(

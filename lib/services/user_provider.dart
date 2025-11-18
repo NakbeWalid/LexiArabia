@@ -21,15 +21,22 @@ class UserProvider extends ChangeNotifier {
 
       final userData = await UserService.getUserData(userId);
       if (userData != null) {
+        print('📥 Données brutes chargées depuis Firestore:');
+        print('   - progress: ${userData['progress']}');
+        print('   - progress.lessons: ${userData['progress']?['lessons']}');
+        
         _currentUser = UserModel.fromMap(userId, userData);
         print('✅ Utilisateur chargé: ${_currentUser!.profile.username}');
+        print('📊 Progress.lessons dans le modèle: ${_currentUser!.progress.lessons.keys.toList()}');
+        print('📊 Nombre de leçons dans progress: ${_currentUser!.progress.lessons.length}');
       } else {
         _error = 'Utilisateur non trouvé';
         print('❌ Utilisateur non trouvé: $userId');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       _error = 'Erreur lors du chargement: $e';
       print('❌ Erreur lors du chargement de l\'utilisateur: $e');
+      print('❌ Stack trace: $stackTrace');
     } finally {
       _isLoading = false;
       notifyListeners();
