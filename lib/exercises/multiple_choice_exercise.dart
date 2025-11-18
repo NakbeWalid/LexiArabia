@@ -123,11 +123,24 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
       ),
     );
 
-    print('About to call widget.onNext in 1.5 seconds...');
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      print('Calling widget.onNext now!');
-      widget.onNext(isCorrect);
-    });
+    // Seulement passer à l'exercice suivant si la réponse est correcte
+    if (isCorrect) {
+      print('About to call widget.onNext in 0.8 seconds...');
+      Future.delayed(const Duration(milliseconds: 800), () {
+        print('Calling widget.onNext now!');
+        widget.onNext(isCorrect);
+      });
+    } else {
+      // Réinitialiser après un délai pour permettre de réessayer
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          setState(() {
+            selectedOption = null;
+            showFeedback = false;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -248,6 +261,12 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
                       final isSelected = selectedOption == option;
                       final isCorrect = option == translatedAnswer;
                       final showResult = showFeedback && isSelected;
+                      // Permettre de cliquer si pas de feedback, ou si feedback mais réponse incorrecte
+                      final canTap =
+                          !showFeedback ||
+                          (showFeedback &&
+                              selectedOption != null &&
+                              selectedOption != translatedAnswer);
 
                       return AnimationConfiguration.staggeredList(
                         position: index,
@@ -259,7 +278,7 @@ class _MultipleChoiceExerciseState extends State<MultipleChoiceExercise>
                                 Container(
                                       margin: EdgeInsets.only(bottom: 16),
                                       child: GestureDetector(
-                                        onTap: selectedOption == null
+                                        onTap: canTap
                                             ? () => checkAnswer(option, context)
                                             : null,
                                         child: AnimatedContainer(

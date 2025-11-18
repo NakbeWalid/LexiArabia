@@ -114,11 +114,24 @@ class _TrueFalseExerciseState extends State<TrueFalseExercise>
       ),
     );
 
-    print('True/False: About to call widget.onNext in 1.5 seconds...');
-    Future.delayed(const Duration(milliseconds: 1500), () {
-      print('True/False: Calling widget.onNext now!');
-      widget.onNext(isCorrect);
-    });
+    // Seulement passer à l'exercice suivant si la réponse est correcte
+    if (isCorrect) {
+      print('True/False: About to call widget.onNext in 0.8 seconds...');
+      Future.delayed(const Duration(milliseconds: 800), () {
+        print('True/False: Calling widget.onNext now!');
+        widget.onNext(isCorrect);
+      });
+    } else {
+      // Réinitialiser après un délai pour permettre de réessayer
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          setState(() {
+            selectedAnswer = null;
+            showFeedback = false;
+          });
+        }
+      });
+    }
   }
 
   @override
@@ -258,9 +271,11 @@ class _TrueFalseExerciseState extends State<TrueFalseExercise>
     final correct = widget.exercise.answer == "true";
     final isCorrect = value == correct;
     final showResult = showFeedback && isSelected;
+    // Permettre de cliquer si pas de feedback, ou si feedback mais réponse incorrecte
+    final canTap = !showFeedback || (showFeedback && selectedAnswer != null && selectedAnswer != correct);
 
     return GestureDetector(
-          onTap: selectedAnswer == null ? () => checkAnswer(value) : null,
+          onTap: canTap ? () => checkAnswer(value) : null,
           child: AnimatedContainer(
             duration: Duration(milliseconds: 400),
             height: 80,

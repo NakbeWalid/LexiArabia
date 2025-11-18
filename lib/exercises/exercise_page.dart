@@ -42,7 +42,7 @@ class _ExercisePageState extends State<ExercisePage>
       vsync: this,
     );
     _celebrationController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
     if (mounted) _progressController.forward();
@@ -84,7 +84,7 @@ class _ExercisePageState extends State<ExercisePage>
       if (mounted) _celebrationController.forward();
       HapticFeedback.heavyImpact();
 
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 200));
 
       // Incrémenter le compteur de leçons complétées aujourd'hui
       await DailyLimitService.incrementLessonCount();

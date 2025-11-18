@@ -41,6 +41,9 @@ class _PairsExerciseState extends State<PairsExercise>
 
   // Flag pour savoir si on a déjà initialisé les traductions
   bool _translationsInitialized = false;
+  
+  // Flag pour savoir si on a déjà vérifié et qu'il y a des erreurs
+  bool _hasErrors = false;
 
   @override
   void initState() {
@@ -141,6 +144,7 @@ class _PairsExerciseState extends State<PairsExercise>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.exercise != widget.exercise) {
       _translationsInitialized = false; // Réinitialiser pour le nouvel exercice
+      _hasErrors = false; // Réinitialiser le flag d'erreur
       _initializeExercise();
       setState(() {});
     }
@@ -208,6 +212,7 @@ class _PairsExerciseState extends State<PairsExercise>
       connectedItems.add(leftItem);
       connectedItems.add(rightItem);
       selectedLeftItem = null; // Remettre à null après connexion
+      _hasErrors = false; // Réinitialiser le flag d'erreur quand on modifie
     });
 
     // Vérifie si c'est correct
@@ -229,8 +234,8 @@ class _PairsExerciseState extends State<PairsExercise>
       }
     }
 
-    // Vérifie si tous les pairs sont complétés
-    if (userPairs.length == correctPairs.length) {
+    // Vérifie si tous les pairs sont complétés et qu'on n'a pas déjà vérifié avec des erreurs
+    if (userPairs.length == correctPairs.length && !_hasErrors) {
       bool allCorrect = true;
       for (var entry in userPairs.entries) {
         if (correctPairs[entry.key] != entry.value) {
@@ -268,13 +273,14 @@ class _PairsExerciseState extends State<PairsExercise>
           ),
         );
 
-        // Passer à l'exercice suivant après 2 secondes
-        Future.delayed(const Duration(milliseconds: 2000), () => widget.onNext(true)); // Toutes les paires sont correctes
+        // Passer à l'exercice suivant après 0.8 secondes
+        Future.delayed(const Duration(milliseconds: 800), () => widget.onNext(true)); // Toutes les paires sont correctes
       } else {
-        // ❌ CERTAINES RÉPONSES SONT INCORRECTES MAIS ON PASSE QUAND MÊME
-        if (mounted) _successController.forward();
+        // ❌ CERTAINES RÉPONSES SONT INCORRECTES - Permettre de réessayer
+        _hasErrors = true; // Marquer qu'il y a des erreurs
+        HapticFeedback.mediumImpact();
         try {
-          await _audioPlayer.play(AssetSource('sounds/success.mp3'));
+          await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
         } catch (e) {
           print('Audio error: $e');
         }
@@ -286,28 +292,40 @@ class _PairsExerciseState extends State<PairsExercise>
                 Icon(Icons.info_outline, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
-                  "Exercise completed! Some pairs were incorrect, but let's continue! 📚",
+                  "Some pairs are incorrect. Click on incorrect pairs to fix them! 💪",
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
-            backgroundColor: Colors.orange.shade600,
+            backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
         );
 
-        // Passer à l'exercice suivant même avec des erreurs après 2 secondes
-        Future.delayed(const Duration(milliseconds: 2000), () => widget.onNext(false)); // Certaines paires sont incorrectes
+        // Ne pas passer à l'exercice suivant - l'utilisateur doit corriger les erreurs
+        // L'utilisateur peut cliquer sur les paires incorrectes pour les modifier
       }
     }
+  }
+  
+  // Méthode pour déconnecter une paire
+  void _disconnectPair(String leftItem, String rightItem) {
+    setState(() {
+      userPairs.remove(leftItem);
+      connectedItems.remove(leftItem);
+      connectedItems.remove(rightItem);
+      _hasErrors = false; // Réinitialiser le flag d'erreur
+    });
   }
 
   void reset() {
     setState(() {
       _initializeExercise();
+      _hasErrors = false; // Réinitialiser le flag d'erreur
     });
     _controller.reset();
     if (mounted) _successController.reset();
@@ -592,9 +610,11 @@ class _PairsExerciseState extends State<PairsExercise>
   Widget _buildLeftItem(String item, int index) {
     bool isSelected = selectedLeftItem == item;
     bool isConnected = connectedItems.contains(item);
+    // Vérifier si la connexion est correcte
+    bool isCorrect = isConnected && userPairs.containsKey(item) && correctPairs[item] == userPairs[item];
 
     print(
-      "🔍 Left Item: $item - isSelected: $isSelected - isConnected: $isConnected",
+      "🔍 Left Item: $item - isSelected: $isSelected - isConnected: $isConnected - isCorrect: $isCorrect",
     );
 
     return Container(
@@ -603,8 +623,17 @@ class _PairsExerciseState extends State<PairsExercise>
           child: GestureDetector(
             onTap: () {
               print("🖱️ Left item tapped: $item");
-              // Permettre de cliquer même si connecté pour changer la connexion
-              handleItemTap(item, true);
+              // Si connecté et incorrect, permettre de déconnecter en cliquant
+              if (isConnected && _hasErrors && !isCorrect) {
+                // Déconnecter la paire incorrecte
+                String? rightItem = userPairs[item];
+                if (rightItem != null) {
+                  _disconnectPair(item, rightItem);
+                }
+              } else {
+                // Permettre de cliquer même si connecté pour changer la connexion
+                handleItemTap(item, true);
+              }
             },
             child: AnimatedContainer(
               duration: Duration(milliseconds: 300),
@@ -614,7 +643,9 @@ class _PairsExerciseState extends State<PairsExercise>
                   colors: isSelected
                       ? [Colors.yellow.shade400, Colors.orange.shade500]
                       : isConnected
-                      ? [Colors.green.shade400, Colors.green.shade600]
+                      ? isCorrect
+                          ? [Colors.green.shade400, Colors.green.shade600]
+                          : [Colors.red.shade400, Colors.red.shade600]
                       : [
                           Colors.white.withOpacity(0.9),
                           Colors.white.withOpacity(0.7),
@@ -687,8 +718,14 @@ class _PairsExerciseState extends State<PairsExercise>
       child: GestureDetector(
         onTap: () {
           print("🖱️ Right item tapped: $item");
-          // Permettre de cliquer même si connecté pour changer la connexion
-          handleItemTap(item, false);
+          // Si connecté et incorrect, permettre de déconnecter
+          if (isConnected && _hasErrors && !isCorrect && connectedLeftItem != null) {
+            // Déconnecter la paire incorrecte
+            _disconnectPair(connectedLeftItem, item);
+          } else {
+            // Permettre de cliquer même si connecté pour changer la connexion
+            handleItemTap(item, false);
+          }
         },
         child: AnimatedContainer(
           duration: Duration(milliseconds: 300),

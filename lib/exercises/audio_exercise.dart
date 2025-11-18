@@ -127,7 +127,20 @@ class _AudioExerciseState extends State<AudioExercise>
       ),
     );
 
-    Future.delayed(const Duration(milliseconds: 1500), () => widget.onNext(isCorrect));
+    // Seulement passer à l'exercice suivant si la réponse est correcte
+    if (isCorrect) {
+      Future.delayed(const Duration(milliseconds: 800), () => widget.onNext(isCorrect));
+    } else {
+      // Réinitialiser après un délai pour permettre de réessayer
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (mounted) {
+          setState(() {
+            selectedOption = null;
+            showFeedback = false;
+          });
+        }
+      });
+    }
   }
 
   void playAudio() async {
@@ -168,7 +181,7 @@ class _AudioExerciseState extends State<AudioExercise>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          duration: Duration(seconds: 3),
+          duration: Duration(seconds: 2),
         ),
       );
     }
@@ -409,6 +422,8 @@ class _AudioExerciseState extends State<AudioExercise>
                         final isSelected = selectedOption == option;
                         final isCorrect = option == widget.exercise.answer;
                         final showResult = showFeedback && isSelected;
+                        // Permettre de cliquer si pas de feedback, ou si feedback mais réponse incorrecte
+                        final canTap = !showFeedback || (showFeedback && selectedOption != null && selectedOption != widget.exercise.answer);
 
                         return AnimationConfiguration.staggeredGrid(
                           position: index,
@@ -418,9 +433,7 @@ class _AudioExerciseState extends State<AudioExercise>
                             child: FadeInAnimation(
                               child:
                                   GestureDetector(
-                                        onTap: selectedOption == null
-                                            ? () => checkAnswer(option)
-                                            : null,
+                                        onTap: canTap ? () => checkAnswer(option) : null,
                                         child: AnimatedContainer(
                                           duration: Duration(milliseconds: 400),
                                           decoration: BoxDecoration(

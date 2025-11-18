@@ -149,8 +149,6 @@ class _DragDropExerciseState extends State<DragDropExercise>
 
       if (isCorrect) {
         // ✅ RÉPONSE CORRECTE
-        Future.delayed(const Duration(milliseconds: 1000), () => widget.onNext(true));
-
         print(
           '🎉 Exercise completed successfully! Calling onNext in 2 seconds...',
         );
@@ -182,14 +180,14 @@ class _DragDropExerciseState extends State<DragDropExercise>
           ),
         );
 
-        Future.delayed(const Duration(milliseconds: 1000), () {
+        Future.delayed(const Duration(milliseconds: 800), () {
           print('🚀 Calling widget.onNext now!');
           widget.onNext(true); // Réponse correcte
         });
       } else {
-        // ❌ RÉPONSE INCORRECTE MAIS ON PASSE QUAND MÊME
+        // ❌ RÉPONSE INCORRECTE - Permettre de réessayer
         print(
-          '⚠️ Exercise completed with wrong answer! Calling onNext in 2 seconds...',
+          '⚠️ Wrong answer! Allowing retry...',
         );
         HapticFeedback.mediumImpact();
         try {
@@ -197,7 +195,6 @@ class _DragDropExerciseState extends State<DragDropExercise>
         } catch (e) {
           print('Audio error: $e');
         }
-        if (mounted) _pulseController.forward();
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -206,23 +203,31 @@ class _DragDropExerciseState extends State<DragDropExercise>
                 Icon(Icons.info_outline, color: Colors.white),
                 SizedBox(width: 8),
                 Text(
-                  "Exercise completed! The answer was incorrect, but let's continue! 📚",
+                  "Oops, try again! 💪",
                   style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
-            backgroundColor: Colors.orange.shade600,
+            backgroundColor: Colors.red.shade600,
             behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
           ),
         );
 
-        // Passer à l'exercice suivant même avec une réponse incorrecte
-        Future.delayed(const Duration(milliseconds: 2000), () {
-          print('🚀 Calling widget.onNext now (with wrong answer)!');
-          widget.onNext(false); // Réponse incorrecte
+        // Réinitialiser après un délai pour permettre de réessayer
+        Future.delayed(const Duration(milliseconds: 1000), () {
+          if (mounted) {
+            setState(() {
+              // Réinitialiser les slots pour permettre de réessayer
+              sentenceSlots = List.filled(sentenceSlots.length, null);
+              // Réinitialiser les mots disponibles
+              availableWords = List.from(widget.exercise.options ?? []);
+              availableWords.shuffle();
+            });
+          }
         });
       }
     }
