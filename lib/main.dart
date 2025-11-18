@@ -1807,21 +1807,19 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
 
                       // Nom de la leçon
                       Positioned(
-                        bottom: 25,
-                        left: 8,
-                        right: 8,
+                        bottom: 20,
+                        left: 6,
+                        right: 6,
                         child: Text(
-                          title.length > 15
-                              ? '${title.substring(0, 15)}...'
-                              : title,
+                          _getShortTitle(title),
                           style: GoogleFonts.poppins(
                             color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            height: 1.2,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            height: 1.1,
                           ),
                           textAlign: TextAlign.center,
-                          maxLines: 2,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -1936,6 +1934,28 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     final y = baseY;
 
     return Offset(x, y);
+  }
+
+  String _getShortTitle(String title) {
+    // Si le titre est court, le retourner tel quel
+    if (title.length <= 20) return title;
+
+    // Prendre les 2-3 premiers mots maximum
+    final words = title.split(' ');
+    if (words.length <= 2) {
+      // Si 2 mots ou moins, prendre les 18 premiers caractères en coupant au dernier espace
+      if (title.length > 18) {
+        final lastSpace = title.lastIndexOf(' ', 18);
+        if (lastSpace > 0) {
+          return title.substring(0, lastSpace);
+        }
+        return title.substring(0, 18);
+      }
+      return title;
+    }
+
+    // Prendre les 2 premiers mots
+    return '${words[0]} ${words[1]}';
   }
 
   Map<String, dynamic> _getEnhancedBubbleInfo(
