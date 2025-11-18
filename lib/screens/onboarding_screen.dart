@@ -243,121 +243,133 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildOnboardingPage(OnboardingPage page, int index) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Icône animée
-          Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      page.color.withOpacity(0.3),
-                      page.color.withOpacity(0.1),
-                      Colors.transparent,
-                    ],
+    return SingleChildScrollView(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icône animée
+            Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      colors: [
+                        page.color.withOpacity(0.3),
+                        page.color.withOpacity(0.1),
+                        Colors.transparent,
+                      ],
+                    ),
+                    shape: BoxShape.circle,
                   ),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(page.icon, size: 60, color: page.color),
-              )
-              .animate()
-              .scale(delay: 200.ms, duration: 600.ms, curve: Curves.elasticOut)
-              .fadeIn(delay: 100.ms),
+                  child: Icon(page.icon, size: 50, color: page.color),
+                )
+                .animate()
+                .scale(delay: 200.ms, duration: 600.ms, curve: Curves.elasticOut)
+                .fadeIn(delay: 100.ms),
 
-          SizedBox(height: 40),
+            SizedBox(height: 30),
 
-          // Titre
-          Text(
-            page.title,
-            style: GoogleFonts.poppins(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 0.5,
-            ),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
+            // Titre
+            Text(
+              page.title,
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2, end: 0),
 
-          SizedBox(height: 12),
+            SizedBox(height: 10),
 
-          // Sous-titre
-          Text(
-            page.subtitle,
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: page.color,
-              letterSpacing: 0.3,
-            ),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
+            // Sous-titre
+            Text(
+              page.subtitle,
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: page.color,
+                letterSpacing: 0.3,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2, end: 0),
 
-          SizedBox(height: 24),
+            SizedBox(height: 20),
 
-          // Description
-          Text(
-            page.description,
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.9),
-              height: 1.6,
-            ),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
+            // Description
+            Text(
+              page.description,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.white.withOpacity(0.9),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.2, end: 0),
 
-          SizedBox(height: 40),
+            SizedBox(height: 30),
 
-          // Liste des fonctionnalités
-          ...page.features.asMap().entries.map((entry) {
-            final featureIndex = entry.key;
-            final feature = entry.value;
-            return Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child:
-                  Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            margin: EdgeInsets.only(top: 4, right: 16),
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: page.color.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: page.color, width: 2),
-                            ),
-                            child: Icon(
-                              Icons.check,
-                              size: 14,
-                              color: page.color,
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              feature,
-                              style: GoogleFonts.poppins(
-                                fontSize: 15,
-                                color: Colors.white.withOpacity(0.85),
-                                height: 1.5,
-                              ),
-                            ),
-                          ),
-                        ],
-                      )
-                      .animate()
-                      .fadeIn(delay: (600 + featureIndex * 100).ms)
-                      .slideX(
-                        begin: -0.2,
-                        end: 0,
-                        delay: (600 + featureIndex * 100).ms,
+            // Liste des fonctionnalités
+            ...page.features.asMap().entries.map((entry) {
+              final featureIndex = entry.key;
+              final feature = entry.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(top: 4, right: 12),
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: page.color.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: page.color, width: 2),
                       ),
-            );
-          }).toList(),
-        ],
+                      child: Icon(
+                        Icons.check,
+                        size: 12,
+                        color: page.color,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.85),
+                          height: 1.4,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                )
+                    .animate()
+                    .fadeIn(delay: (600 + featureIndex * 100).ms)
+                    .slideX(
+                      begin: -0.2,
+                      end: 0,
+                      delay: (600 + featureIndex * 100).ms,
+                    ),
+              );
+            }).toList(),
+            
+            SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }

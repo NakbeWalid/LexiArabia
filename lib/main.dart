@@ -21,6 +21,7 @@ import 'package:dualingocoran/screens/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:dualingocoran/services/learning_progress_service.dart';
 
 Future<void> verifierLecons() async {
   try {
@@ -629,7 +630,7 @@ class RoadmapBubbleScreen extends StatefulWidget {
 }
 
 class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _bubbleController;
   late AnimationController _sectionPanelController;
   late AnimationController _floatingController;
@@ -639,6 +640,8 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
   String _currentSection = '';
   final ScrollController _scrollController = ScrollController();
   List<Animation<double>> _bubbleAnimations = [];
+  double _learningPercentage = 0.0;
+  late AnimationController _percentageController;
 
   @override
   void initState() {
@@ -663,18 +666,35 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
       vsync: this,
     )..repeat();
 
+    _percentageController = AnimationController(
+      duration: Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
     _loadLessons();
+    _loadLearningPercentage();
     _setupScrollListener();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _bubbleController.dispose();
     _sectionPanelController.dispose();
     _floatingController.dispose();
     _pulseController.dispose();
+    _percentageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Recharger le pourcentage quand l'app revient au premier plan
+      _loadLearningPercentage();
+    }
   }
 
   void _setupScrollListener() {
@@ -764,6 +784,22 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
       }
     } catch (e) {
       print('Erreur lors du chargement des leçons: $e');
+    }
+  }
+
+  Future<void> _loadLearningPercentage() async {
+    try {
+      final percentage = await LearningProgressService.getLearningPercentage();
+      if (mounted) {
+        setState(() {
+          _learningPercentage = percentage;
+        });
+        // Animer le pourcentage
+        _percentageController.reset();
+        _percentageController.forward();
+      }
+    } catch (e) {
+      print('Erreur lors du chargement du pourcentage: $e');
     }
   }
 
@@ -893,9 +929,9 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
   int _getSectionOrder(String sectionName) {
     switch (sectionName.toLowerCase()) {
       case 'basics':
-        return 1;
-      case 'pronouns':
         return 2;
+      case 'pronouns':
+        return 1;
       case 'grammar':
         return 3;
       case 'vocabulary':
@@ -1388,94 +1424,278 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
               ),
             ],
           ),
-          SizedBox(height: 20),
-          // Titre avec effet de brillance
-          ShaderMask(
-            shaderCallback: (bounds) => LinearGradient(
-              colors: [Colors.white, Color(0xFFD4AF37), Colors.white],
-              stops: [0.0, 0.5, 1.0],
-              transform: GradientRotation(
-                _floatingController.value * 2 * math.pi,
-              ),
-            ).createShader(bounds),
-            child: Text(
-              'Roadmap',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Text(
-            'Continue ton apprentissage',
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 16,
-            ),
-          ),
-          SizedBox(height: 20),
+          SizedBox(height: 12),
+          // Widget de pourcentage d'apprentissage (discret)
+          _buildLearningPercentageWidget(),
+          SizedBox(height: 12),
         ],
       ),
     );
   }
 
+  Widget _buildLearningPercentageWidget() {
+    return AnimatedBuilder(
+      animation: _percentageController,
+      builder: (context, child) {
+        final animatedPercentage =
+            _learningPercentage * _percentageController.value;
+
+        return Container(
+          margin: EdgeInsets.symmetric(horizontal: 20),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Color(0xFFD4AF37).withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Icône discrète
+              Icon(
+                Icons.trending_up,
+                color: Color(0xFFD4AF37).withOpacity(0.8),
+                size: 16,
+              ),
+              SizedBox(width: 8),
+              // Pourcentage
+              Text(
+                '${animatedPercentage.toStringAsFixed(1)}%',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withOpacity(0.9),
+                ),
+              ),
+              SizedBox(width: 8),
+              // Barre de progression linéaire discrète
+              Container(
+                width: 60,
+                height: 4,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                  color: Colors.white.withOpacity(0.1),
+                ),
+                child: Stack(
+                  children: [
+                    AnimatedContainer(
+                      duration: Duration(milliseconds: 800),
+                      curve: Curves.easeOutCubic,
+                      width: 60 * (animatedPercentage / 100),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFD4AF37).withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildEnhancedRoadmap() {
+    // Organiser les leçons par section avec leurs index globaux
+    final List<Map<String, dynamic>> roadmapItems = [];
+    int globalIndex = 0;
+
+    // Si _sections est vide, utiliser directement _lessons (fallback)
+    if (_sections.isEmpty && _lessons.isNotEmpty) {
+      // Afficher toutes les leçons sans séparateurs
+      for (int i = 0; i < _lessons.length; i++) {
+        final lesson = _lessons[i];
+        final data = lesson.data() as Map<String, dynamic>;
+        roadmapItems.add({
+          'type': 'lesson',
+          'lesson': lesson,
+          'data': data,
+          'index': i,
+          'originalIndex': i,
+        });
+      }
+    } else if (_sections.isNotEmpty) {
+      // Organiser par sections avec séparateurs
+      for (
+        int sectionIndex = 0;
+        sectionIndex < _sections.length;
+        sectionIndex++
+      ) {
+        final section = _sections[sectionIndex];
+        final sectionLessons =
+            section['lessons'] as List<QueryDocumentSnapshot>? ?? [];
+
+        // Ajouter un séparateur de section pour toutes les sections (y compris la première)
+        if (sectionLessons.isNotEmpty) {
+          roadmapItems.add({
+            'type': 'separator',
+            'sectionName': section['name'] as String,
+            'sectionTitle': section['title'] as String,
+            'index': globalIndex,
+          });
+          globalIndex++;
+        }
+
+        // Ajouter les leçons de cette section
+        for (final lesson in sectionLessons) {
+          final data = lesson.data() as Map<String, dynamic>;
+          // Trouver l'index original de la leçon dans _lessons
+          final originalIndex = _lessons.indexWhere((l) => l.id == lesson.id);
+          roadmapItems.add({
+            'type': 'lesson',
+            'lesson': lesson,
+            'data': data,
+            'index': globalIndex,
+            'originalIndex': originalIndex >= 0 ? originalIndex : globalIndex,
+          });
+          globalIndex++;
+        }
+      }
+    }
+
+    // Debug: vérifier le nombre d'items
+    print(
+      '📊 Roadmap items: ${roadmapItems.length} (sections: ${_sections.length}, lessons: ${_lessons.length})',
+    );
+
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 20),
-      height: _calculateRoadmapHeight(),
+      height: _calculateRoadmapHeight(roadmapItems.length),
       child: Stack(
         children: [
-          // Bulles de leçons avec animations avancées
-          ..._lessons.asMap().entries.map((entry) {
-            final index = entry.key;
-            final lesson = entry.value;
-            final data = lesson.data() as Map<String, dynamic>;
+          // Items de la roadmap (séparateurs + leçons)
+          ...roadmapItems.map((item) {
+            if (item['type'] == 'separator') {
+              return _buildSectionSeparator(
+                item['sectionTitle'] as String,
+                item['index'] as int,
+                roadmapItems.length,
+              );
+            } else {
+              final data = item['data'] as Map<String, dynamic>;
+              final index = item['index'] as int;
+              final originalIndex = item['originalIndex'] as int? ?? index;
 
-            // Extraire le titre (Map de traductions uniquement)
-            String titleText = 'Unknown';
-            if (data['title'] != null && data['title'] is Map) {
-              final titleMap = data['title'] as Map<String, dynamic>;
-              titleText = TranslationHelper.getTranslation(
+              // Extraire le titre (Map de traductions uniquement)
+              String titleText = 'Unknown';
+              if (data['title'] != null && data['title'] is Map) {
+                final titleMap = data['title'] as Map<String, dynamic>;
+                titleText = TranslationHelper.getTranslation(
+                  context,
+                  titleMap,
+                  'title',
+                );
+              }
+
+              // Extraire la description (Map de traductions uniquement)
+              String descriptionText = '';
+              if (data['description'] != null && data['description'] is Map) {
+                final descMap = data['description'] as Map<String, dynamic>;
+                descriptionText = TranslationHelper.getTranslation(
+                  context,
+                  descMap,
+                  'description',
+                );
+              }
+
+              return _buildEnhancedLessonBubble(
                 context,
-                titleMap,
-                'title',
+                titleText,
+                descriptionText,
+                data['words'] as List<dynamic>? ?? [],
+                data['exercises'] as List<dynamic>? ?? [],
+                originalIndex, // Index pour les animations (dans _lessons)
+                index, // Index pour le positionnement (dans roadmapItems)
+                roadmapItems.length, // Nombre total d'items dans la roadmap
+                data['completed'] == true,
+                data['started'] == true,
               );
             }
-
-            // Extraire la description (Map de traductions uniquement)
-            String descriptionText = '';
-            if (data['description'] != null && data['description'] is Map) {
-              final descMap = data['description'] as Map<String, dynamic>;
-              descriptionText = TranslationHelper.getTranslation(
-                context,
-                descMap,
-                'description',
-              );
-            }
-
-            return _buildEnhancedLessonBubble(
-              context,
-              titleText,
-              descriptionText,
-              data['words'] as List<dynamic>? ?? [],
-              data['exercises'] as List<dynamic>? ?? [],
-              index,
-              _lessons.length,
-              data['completed'] == true,
-              data['started'] == true,
-            );
           }),
         ],
       ),
     );
   }
 
-  double _calculateRoadmapHeight() {
-    if (_lessons.isEmpty) return 400;
+  double _calculateRoadmapHeight([int? itemCount]) {
+    final count = itemCount ?? _lessons.length;
+    if (count == 0) return 400;
 
-    // Hauteur basée sur le nombre de leçons et l'espacement
-    return 200 + (_lessons.length * 160.0) + 200;
+    // Hauteur basée sur le nombre d'items (leçons + séparateurs) et l'espacement
+    // Les séparateurs prennent ~80px de hauteur
+    return 200 + (count * 160.0) + 200;
+  }
+
+  Widget _buildSectionSeparator(
+    String sectionTitle,
+    int index,
+    int totalItems,
+  ) {
+    final position = _calculateEnhancedBubblePosition(index, totalItems);
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      top: position.dy - 40,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 20),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Ligne horizontale
+            Container(
+              height: 2,
+              margin: EdgeInsets.symmetric(horizontal: 40),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.3),
+                    Colors.white.withOpacity(0.1),
+                    Colors.white.withOpacity(0.3),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(1),
+              ),
+            ),
+            // Texte de la section au centre
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Color(0xFF302B63).withOpacity(0.95),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Text(
+                sectionTitle,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildEnhancedLessonBubble(
@@ -1484,17 +1704,21 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
     String description,
     List<dynamic> newWords,
     List<dynamic> exercises,
-    int index,
-    int totalLessons,
+    int animationIndex, // Index pour les animations (dans _lessons)
+    int positionIndex, // Index pour le positionnement (dans roadmapItems)
+    int totalItems, // Nombre total d'items dans la roadmap
     bool isCompleted,
     bool isStarted,
   ) {
-    if (index >= _bubbleAnimations.length) return SizedBox.shrink();
+    if (animationIndex >= _bubbleAnimations.length) return SizedBox.shrink();
 
-    final position = _calculateEnhancedBubblePosition(index, totalLessons);
+    final position = _calculateEnhancedBubblePosition(
+      positionIndex,
+      totalItems,
+    );
     final bubbleInfo = _getEnhancedBubbleInfo(
-      index,
-      totalLessons,
+      animationIndex,
+      totalItems,
       isCompleted,
       isStarted,
     );
@@ -1503,9 +1727,9 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
       left: position.dx - 60,
       top: position.dy - 60,
       child: AnimatedBuilder(
-        animation: _bubbleAnimations[index],
+        animation: _bubbleAnimations[animationIndex],
         builder: (context, child) {
-          final animationValue = _bubbleAnimations[index].value;
+          final animationValue = _bubbleAnimations[animationIndex].value;
 
           return Transform.scale(
             scale: animationValue,
