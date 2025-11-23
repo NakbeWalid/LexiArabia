@@ -23,6 +23,7 @@ import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dualingocoran/services/learning_progress_service.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:dualingocoran/test_srs_init.dart';
 
 Future<void> verifierLecons() async {
   try {
@@ -185,7 +186,9 @@ void main() async {
 
   // Ajouter la nouvelle leçon
   //await verifierLecons();
-
+  // ⬇️ AJOUTEZ CES LIGNES POUR TESTER
+  //await testSRSInitialization(); // Tester l'initialisation SRS
+  // ⬆️ FIN DU CODE DE TEST
   runApp(CoranLinguaApp());
 }
 

@@ -1,0 +1,61 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "srsExercises",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "dueDate",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "srsExercises",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "srsExercises",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "lessonId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "dueDate",
+                    "order": "ASCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "srsReviews",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "exerciseId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "reviewedAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

@@ -8,6 +8,8 @@ import 'package:dualingocoran/exercises/pairs_exercise.dart';
 import 'package:dualingocoran/exercises/true_false_exercise.dart';
 import 'package:dualingocoran/services/daily_limit_service.dart';
 import 'package:dualingocoran/services/user_provider.dart';
+import 'package:dualingocoran/services/srs_service.dart';
+import 'package:dualingocoran/services/srs_database_init.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -16,11 +18,7 @@ class ExercisePage extends StatefulWidget {
   final List<Exercise> exercises;
   final String? lessonId;
 
-  const ExercisePage({
-    super.key,
-    required this.exercises,
-    this.lessonId,
-  });
+  const ExercisePage({super.key, required this.exercises, this.lessonId});
 
   @override
   State<ExercisePage> createState() => _ExercisePageState();
@@ -34,6 +32,13 @@ class _ExercisePageState extends State<ExercisePage>
   int correctAnswers = 0;
   int totalAnswers = 0;
 
+  // SRS: Stocker les IDs des exercices SRS créés
+  Map<int, String> srsExerciseIds = {}; // index -> exerciseId SRS
+
+  // Tracking pour notation automatique
+  Map<int, DateTime> exerciseStartTimes = {}; // index -> temps de début
+  Map<int, int> exerciseAttempts = {}; // index -> nombre d'essais
+
   @override
   void initState() {
     super.initState();
@@ -46,6 +51,10 @@ class _ExercisePageState extends State<ExercisePage>
       vsync: this,
     );
     if (mounted) _progressController.forward();
+
+    // Initialiser le tracking pour le premier exercice
+    exerciseStartTimes[0] = DateTime.now();
+    exerciseAttempts[0] = 0;
   }
 
   @override
@@ -55,7 +64,46 @@ class _ExercisePageState extends State<ExercisePage>
     super.dispose();
   }
 
-  void nextExercise({bool? wasCorrect}) async {
+  /// Calculer automatiquement la qualité (0-3) basée sur le nombre d'essais et le temps
+  /// 0 = AGAIN (très difficile)
+  /// 1 = HARD (difficile)
+  /// 2 = GOOD (bon)
+  /// 3 = EASY (facile)
+  int _calculateQuality(int attempts, int timeInSeconds) {
+    // Seuil de temps (en secondes) pour considérer un exercice comme rapide
+    const int fastTimeThreshold = 10; // 10 secondes = rapide
+    const int slowTimeThreshold = 30; // 30 secondes = lent
+
+    // Seuil d'essais
+    const int perfectAttempts = 1; // 1 essai = parfait
+    const int goodAttempts = 2; // 2 essais = bon
+    const int hardAttempts = 3; // 3 essais = difficile
+
+    // Logique de calcul
+    if (attempts == perfectAttempts && timeInSeconds <= fastTimeThreshold) {
+      // 1 essai et rapide = EASY (3)
+      return 3;
+    } else if (attempts == perfectAttempts &&
+        timeInSeconds <= slowTimeThreshold) {
+      // 1 essai mais plus lent = GOOD (2)
+      return 2;
+    } else if (attempts <= goodAttempts && timeInSeconds <= slowTimeThreshold) {
+      // 2 essais max et pas trop lent = GOOD (2)
+      return 2;
+    } else if (attempts <= hardAttempts) {
+      // 3 essais max = HARD (1)
+      return 1;
+    } else {
+      // Plus de 3 essais = AGAIN (0)
+      return 0;
+    }
+  }
+
+  void nextExercise({
+    bool? wasCorrect,
+    int? attempts,
+    int? timeInSeconds,
+  }) async {
     // Enregistrer la réponse si fournie
     if (wasCorrect != null) {
       setState(() {
@@ -64,6 +112,68 @@ class _ExercisePageState extends State<ExercisePage>
           correctAnswers++;
         }
       });
+
+      // Créer un exercice SRS si la réponse est correcte et qu'on a un lessonId
+      if (wasCorrect && widget.lessonId != null) {
+        try {
+          final userProvider = Provider.of<UserProvider>(
+            context,
+            listen: false,
+          );
+          final userId = userProvider.currentUser?.userId;
+
+          if (userId != null) {
+            // S'assurer que SRS est initialisé
+            if (!await SRSDatabaseInit.isSRSInitialized(userId)) {
+              await SRSDatabaseInit.initializeSRSCollections(userId);
+            }
+
+            // Créer l'exercice SRS
+            final currentExercise = widget.exercises[currentIndex];
+            final srsExerciseId = await SRSService.createSRSExercise(
+              userId: userId,
+              lessonId: widget.lessonId!,
+              exerciseIndex: currentIndex,
+              exercise: currentExercise,
+            );
+
+            // Stocker l'ID
+            setState(() {
+              srsExerciseIds[currentIndex] = srsExerciseId;
+            });
+
+            // Calculer la qualité automatiquement
+            final attemptsCount =
+                attempts ?? exerciseAttempts[currentIndex] ?? 1;
+            final timeSeconds =
+                timeInSeconds ??
+                (exerciseStartTimes[currentIndex] != null
+                    ? DateTime.now()
+                          .difference(exerciseStartTimes[currentIndex]!)
+                          .inSeconds
+                    : 10);
+
+            final quality = _calculateQuality(attemptsCount, timeSeconds);
+
+            // Enregistrer automatiquement la révision avec la qualité calculée
+            await SRSService.recordReview(
+              userId: userId,
+              exerciseId: srsExerciseId,
+              quality: quality,
+              responseTime: timeSeconds,
+            );
+
+            print(
+              '✅ Exercice SRS créé et révisé automatiquement: exercice $currentIndex, qualité $quality (essais: $attemptsCount, temps: ${timeSeconds}s)',
+            );
+          }
+        } catch (e) {
+          print(
+            '⚠️ Erreur lors de la création/révision de l\'exercice SRS: $e',
+          );
+          // Ne pas bloquer le flux si la création SRS échoue
+        }
+      }
     }
 
     if (currentIndex < widget.exercises.length - 1) {
@@ -72,6 +182,9 @@ class _ExercisePageState extends State<ExercisePage>
 
       setState(() {
         currentIndex++;
+        // Initialiser le tracking pour le prochain exercice
+        exerciseStartTimes[currentIndex] = DateTime.now();
+        exerciseAttempts[currentIndex] = 0;
       });
 
       // Reset and animate for next exercise
@@ -161,31 +274,113 @@ class _ExercisePageState extends State<ExercisePage>
       case 'multiple_choice':
         exerciseWidget = MultipleChoiceExercise(
           exercise: exercise,
-          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
+          onNext: (isCorrect) {
+            // Incrémenter le nombre d'essais
+            setState(() {
+              exerciseAttempts[currentIndex] =
+                  (exerciseAttempts[currentIndex] ?? 0) + 1;
+            });
+            // Calculer le temps écoulé
+            final startTime =
+                exerciseStartTimes[currentIndex] ?? DateTime.now();
+            final timeInSeconds = DateTime.now()
+                .difference(startTime)
+                .inSeconds;
+            final attempts = exerciseAttempts[currentIndex] ?? 1;
+            nextExercise(
+              wasCorrect: isCorrect,
+              attempts: attempts,
+              timeInSeconds: timeInSeconds,
+            );
+          },
         );
         break;
       case 'true_false':
         exerciseWidget = TrueFalseExercise(
           exercise: exercise,
-          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
+          onNext: (isCorrect) {
+            setState(() {
+              exerciseAttempts[currentIndex] =
+                  (exerciseAttempts[currentIndex] ?? 0) + 1;
+            });
+            final startTime =
+                exerciseStartTimes[currentIndex] ?? DateTime.now();
+            final timeInSeconds = DateTime.now()
+                .difference(startTime)
+                .inSeconds;
+            final attempts = exerciseAttempts[currentIndex] ?? 1;
+            nextExercise(
+              wasCorrect: isCorrect,
+              attempts: attempts,
+              timeInSeconds: timeInSeconds,
+            );
+          },
         );
         break;
       case 'audio_choice':
         exerciseWidget = AudioExercise(
           exercise: exercise,
-          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
+          onNext: (isCorrect) {
+            setState(() {
+              exerciseAttempts[currentIndex] =
+                  (exerciseAttempts[currentIndex] ?? 0) + 1;
+            });
+            final startTime =
+                exerciseStartTimes[currentIndex] ?? DateTime.now();
+            final timeInSeconds = DateTime.now()
+                .difference(startTime)
+                .inSeconds;
+            final attempts = exerciseAttempts[currentIndex] ?? 1;
+            nextExercise(
+              wasCorrect: isCorrect,
+              attempts: attempts,
+              timeInSeconds: timeInSeconds,
+            );
+          },
         );
         break;
       case 'drag_drop':
         exerciseWidget = DragDropExercise(
           exercise: exercise,
-          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
+          onNext: (isCorrect) {
+            setState(() {
+              exerciseAttempts[currentIndex] =
+                  (exerciseAttempts[currentIndex] ?? 0) + 1;
+            });
+            final startTime =
+                exerciseStartTimes[currentIndex] ?? DateTime.now();
+            final timeInSeconds = DateTime.now()
+                .difference(startTime)
+                .inSeconds;
+            final attempts = exerciseAttempts[currentIndex] ?? 1;
+            nextExercise(
+              wasCorrect: isCorrect,
+              attempts: attempts,
+              timeInSeconds: timeInSeconds,
+            );
+          },
         );
         break;
       case 'pairs':
         exerciseWidget = PairsExercise(
           exercise: exercise,
-          onNext: (isCorrect) => nextExercise(wasCorrect: isCorrect),
+          onNext: (isCorrect) {
+            setState(() {
+              exerciseAttempts[currentIndex] =
+                  (exerciseAttempts[currentIndex] ?? 0) + 1;
+            });
+            final startTime =
+                exerciseStartTimes[currentIndex] ?? DateTime.now();
+            final timeInSeconds = DateTime.now()
+                .difference(startTime)
+                .inSeconds;
+            final attempts = exerciseAttempts[currentIndex] ?? 1;
+            nextExercise(
+              wasCorrect: isCorrect,
+              attempts: attempts,
+              timeInSeconds: timeInSeconds,
+            );
+          },
         );
         break;
       default:
@@ -406,7 +601,7 @@ class ModernCompletionDialog extends StatelessWidget {
     final accuracy = totalExercises > 0
         ? ((correctAnswers / totalExercises) * 100).round()
         : 0;
-    
+
     // Récupérer la streak depuis UserProvider
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final streak = userProvider.currentUser?.stats.currentStreak ?? 0;
@@ -483,7 +678,11 @@ class ModernCompletionDialog extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildStat("XP Earned", "$xpEarned", Icons.star),
-                _buildStat("Streak", streak > 0 ? "🔥 $streak" : "🔥 0", Icons.local_fire_department),
+                _buildStat(
+                  "Streak",
+                  streak > 0 ? "🔥 $streak" : "🔥 0",
+                  Icons.local_fire_department,
+                ),
                 _buildStat("Accuracy", "$accuracy%", Icons.trending_up),
               ],
             ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.3),

@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:dualingocoran/services/srs_service.dart';
+import 'package:dualingocoran/services/user_provider.dart';
+import 'package:dualingocoran/services/srs_database_init.dart';
+import 'package:dualingocoran/screens/srs_review_screen.dart';
 
 class ProgressionScreen extends StatefulWidget {
   const ProgressionScreen({super.key});
@@ -19,6 +24,8 @@ class _ProgressionScreenState extends State<ProgressionScreen>
   final int _lessonsCompleted = 8;
   final int _totalLessons = 15;
   final int _accuracy = 87;
+  int _pendingReviews = 0;
+  bool _isLoadingReviews = true;
 
   @override
   void initState() {
@@ -28,6 +35,40 @@ class _ProgressionScreenState extends State<ProgressionScreen>
       vsync: this,
     );
     _animationController.forward();
+    _loadPendingReviews();
+  }
+
+  Future<void> _loadPendingReviews() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userId = userProvider.currentUser?.userId;
+
+      if (userId == null) {
+        setState(() {
+          _isLoadingReviews = false;
+        });
+        return;
+      }
+
+      // S'assurer que SRS est initialisé
+      if (!await SRSDatabaseInit.isSRSInitialized(userId)) {
+        await SRSDatabaseInit.initializeSRSCollections(userId);
+      }
+
+      // Charger les exercices à réviser
+      final dueExercises = await SRSService.getDueExercises(userId);
+      final newExercises = await SRSService.getNewExercises(userId);
+
+      setState(() {
+        _pendingReviews = dueExercises.length + newExercises.length;
+        _isLoadingReviews = false;
+      });
+    } catch (e) {
+      print('❌ Erreur lors du chargement des révisions: $e');
+      setState(() {
+        _isLoadingReviews = false;
+      });
+    }
   }
 
   @override
@@ -59,6 +100,10 @@ class _ProgressionScreenState extends State<ProgressionScreen>
               children: [
                 // Header avec XP et Streak
                 _buildHeader(),
+                SizedBox(height: 20),
+
+                // Bouton SRS Review
+                _buildSRSReviewButton(),
                 SizedBox(height: 20),
 
                 // Statistiques principales
@@ -179,6 +224,98 @@ class _ProgressionScreenState extends State<ProgressionScreen>
         )
         .animate(controller: _animationController)
         .fadeIn(delay: Duration(milliseconds: 200));
+  }
+
+  Widget _buildSRSReviewButton() {
+    return Container(
+          margin: EdgeInsets.symmetric(horizontal: 20),
+          child: GestureDetector(
+            onTap: () async {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SRSReviewScreen(),
+                ),
+              ).then((_) {
+                // Recharger les révisions après retour
+                _loadPendingReviews();
+              });
+            },
+            child: Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Color(0xFF667eea),
+                    Color(0xFF764ba2),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF667eea).withOpacity(0.4),
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.repeat,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'SRS Review',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          _isLoadingReviews
+                              ? 'Loading...'
+                              : _pendingReviews > 0
+                                  ? '$_pendingReviews exercises to review'
+                                  : 'No reviews for today',
+                          style: GoogleFonts.poppins(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        )
+        .animate(controller: _animationController)
+        .fadeIn(delay: Duration(milliseconds: 300))
+        .slideX(begin: -0.2, end: 0.0);
   }
 
   Widget _buildMainStats() {

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'srs_database_init.dart';
 
 class DatabaseInit {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -621,6 +622,13 @@ class DatabaseInit {
 
       await initializeAchievements();
       await createDemoUsers();
+
+      // Initialiser les collections SRS pour tous les utilisateurs
+      try {
+        await SRSDatabaseInit.initializeSRSForAllUsers();
+      } catch (e) {
+        print('⚠️ Erreur lors de l\'initialisation SRS (non bloquant): $e');
+      }
 
       print('🎉 Base de données initialisée avec succès !');
       print('📊 Collections créées:');

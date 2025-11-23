@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dualingocoran/services/srs_database_init.dart';
 
 // Fonction helper pour formater la date (utilisée pour dailyProgress)
 String _getDateString(DateTime date) {
@@ -266,6 +267,15 @@ class UserService {
           'lessonsCompletedToday': 0,
         },
       });
+
+      // Initialiser le système SRS pour le nouvel utilisateur
+      try {
+        await SRSDatabaseInit.initializeSRSCollections(userId);
+        print('✅ Système SRS initialisé pour le nouvel utilisateur: $userId');
+      } catch (e) {
+        // Ne pas faire échouer la création de l'utilisateur si l'initialisation SRS échoue
+        print('⚠️ Erreur lors de l\'initialisation SRS (non bloquant): $e');
+      }
     } catch (e) {
       print('❌ Erreur lors de la création de l\'utilisateur: $e');
     }
