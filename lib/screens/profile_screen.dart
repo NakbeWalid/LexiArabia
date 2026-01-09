@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/user_provider.dart';
+import '../services/learning_progress_service.dart';
 import 'dart:math' as math;
 
 class ProfilScreen extends StatefulWidget {
@@ -16,10 +18,13 @@ class _ProfilScreenState extends State<ProfilScreen>
     with TickerProviderStateMixin {
   late AnimationController _controller;
   late AnimationController _sparkleController;
+  int _totalLessons = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
@@ -30,6 +35,57 @@ class _ProfilScreenState extends State<ProfilScreen>
     );
     _controller.forward();
     _sparkleController.repeat();
+    _loadUserData();
+    _loadTotalLessons();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Recharger les données utilisateur quand on revient sur la page
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+
+      // Recharger les données utilisateur depuis Firestore
+      if (authService.currentUser != null) {
+        await userProvider.loadUser(authService.currentUser!.uid);
+      }
+    } catch (e) {
+      print('❌ Erreur lors du rechargement des données utilisateur: $e');
+    }
+  }
+
+  Future<void> _loadTotalLessons() async {
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+
+      // Charger l'utilisateur si nécessaire
+      if (userProvider.currentUser == null && authService.currentUser != null) {
+        await userProvider.loadUser(authService.currentUser!.uid);
+      }
+
+      final progressDetails =
+          await LearningProgressService.getLearningProgressDetails();
+      if (mounted) {
+        setState(() {
+          _totalLessons = progressDetails['totalLessons'] ?? 0;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('❌ Erreur lors du chargement du nombre total de leçons: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -41,32 +97,34 @@ class _ProfilScreenState extends State<ProfilScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Example user data (replace with real data as needed)
-    final String avatarUrl = '';
-    final String username = 'QuranLearner';
-    final String email = 'user@email.com';
-    final int xp = 1200;
-    final int level = 5;
-    final int streak = 7;
-    final int totalLessons = 15;
-    final int completedLessons = 8;
-    final List<Map<String, dynamic>> achievements = [
-      {'icon': Icons.star, 'label': 'First Lesson', 'color': Colors.amber},
-      {'icon': Icons.emoji_events, 'label': '100 XP', 'color': Colors.purple},
-      {
-        'icon': Icons.local_fire_department,
-        'label': '7 Day Streak',
-        'color': Colors.orange,
-      },
-      {
-        'icon': Icons.psychology,
-        'label': 'Quick Learner',
-        'color': Colors.blue,
-      },
-      {'icon': Icons.military_tech, 'label': 'Expert', 'color': Colors.green},
-    ];
+    final userProvider = Provider.of<UserProvider>(context);
+    final authService = Provider.of<AuthService>(context);
+    final currentUser = userProvider.currentUser;
+    final firebaseUser = authService.currentUser;
 
-    final double progressToNextLevel = (xp % 1000) / 1000;
+    // Récupérer les données réelles de l'utilisateur
+    final String avatarUrl = currentUser?.profile.avatarUrl ?? '';
+    final String username =
+        currentUser?.profile.displayName ??
+        currentUser?.profile.username ??
+        firebaseUser?.displayName ??
+        'User';
+    final String email =
+        currentUser?.profile.email ?? firebaseUser?.email ?? 'user@email.com';
+
+    // Statistiques réelles
+    final int xp = currentUser?.stats.totalXP ?? 0;
+    final int level = currentUser?.stats.currentLevel ?? 1;
+    final int streak = currentUser?.stats.currentStreak ?? 0;
+    final int completedLessons = currentUser?.stats.lessonsCompleted ?? 0;
+    final int totalLessons = _totalLessons > 0
+        ? _totalLessons
+        : (currentUser?.stats.totalLessons ?? 0);
+
+    // Récupérer les achievements réels
+    final List<Map<String, dynamic>> achievements = _getRealAchievements(
+      currentUser,
+    );
 
     return Scaffold(
       body: Container(
@@ -172,11 +230,19 @@ class _ProfilScreenState extends State<ProfilScreen>
                       SizedBox(height: 30),
 
                       // Progress Card
-                      _buildProgressCard(
-                        progressToNextLevel,
-                        completedLessons,
-                        totalLessons,
-                      ),
+                      _isLoading
+                          ? Center(
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
+                            )
+                          : _buildProgressCard(
+                              totalLessons > 0
+                                  ? (completedLessons / totalLessons)
+                                  : 0.0,
+                              completedLessons,
+                              totalLessons,
+                            ),
                       SizedBox(height: 30),
 
                       // Achievements Section
@@ -475,16 +541,20 @@ class _ProfilScreenState extends State<ProfilScreen>
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: AnimatedContainer(
-                duration: Duration(milliseconds: 1000),
-                width: MediaQuery.of(context).size.width * progress,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.blue.shade400,
-                      Colors.purple.shade400,
-                      Colors.pink.shade400,
-                    ],
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: total > 0
+                    ? (completed / total).clamp(0.0, 1.0)
+                    : 0.0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.blue.shade400,
+                        Colors.purple.shade400,
+                        Colors.pink.shade400,
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -493,7 +563,9 @@ class _ProfilScreenState extends State<ProfilScreen>
           SizedBox(height: 12),
 
           Text(
-            "Next level: ${((1 - progress) * 1000).toInt()} XP to go",
+            total > 0
+                ? "${((completed / total) * 100).round()}% completed"
+                : "No lessons available",
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: Colors.white.withOpacity(0.7),
@@ -659,6 +731,90 @@ class _ProfilScreenState extends State<ProfilScreen>
         ),
       ],
     );
+  }
+
+  List<Map<String, dynamic>> _getRealAchievements(userModel) {
+    if (userModel == null) return [];
+
+    final List<Map<String, dynamic>> realAchievements = [];
+    final userAchievements = userModel.achievements;
+
+    // Définir les achievements disponibles avec leurs critères
+    final achievementDefinitions = [
+      {
+        'id': 'first_lesson',
+        'icon': Icons.star,
+        'label': 'First Lesson',
+        'color': Colors.amber,
+        'check': () => userModel.stats.lessonsCompleted >= 1,
+      },
+      {
+        'id': 'hundred_xp',
+        'icon': Icons.emoji_events,
+        'label': '100 XP',
+        'color': Colors.purple,
+        'check': () => userModel.stats.totalXP >= 100,
+      },
+      {
+        'id': 'seven_day_streak',
+        'icon': Icons.local_fire_department,
+        'label': '7 Day Streak',
+        'color': Colors.orange,
+        'check': () => userModel.stats.currentStreak >= 7,
+      },
+      {
+        'id': 'quick_learner',
+        'icon': Icons.psychology,
+        'label': 'Quick Learner',
+        'color': Colors.blue,
+        'check': () => userModel.stats.accuracy >= 80,
+      },
+      {
+        'id': 'expert',
+        'icon': Icons.military_tech,
+        'label': 'Expert',
+        'color': Colors.green,
+        'check': () => userModel.stats.lessonsCompleted >= 10,
+      },
+    ];
+
+    for (final achievement in achievementDefinitions) {
+      // Vérifier d'abord si l'achievement est débloqué dans Firestore
+      final achievementId = achievement['id'] as String;
+      final unlockedInFirestore = userAchievements[achievementId]?.unlocked;
+
+      // Si pas dans Firestore, vérifier les critères
+      bool isUnlocked = false;
+      if (unlockedInFirestore != null) {
+        isUnlocked = unlockedInFirestore;
+      } else {
+        // Appeler la fonction check de manière sûre
+        final checkFunction = achievement['check'];
+        if (checkFunction is bool Function()) {
+          isUnlocked = checkFunction();
+        } else if (checkFunction is Function) {
+          try {
+            final result = checkFunction();
+            isUnlocked = result == true;
+          } catch (e) {
+            print(
+              '❌ Erreur lors de la vérification de l\'achievement $achievementId: $e',
+            );
+            isUnlocked = false;
+          }
+        }
+      }
+
+      if (isUnlocked) {
+        realAchievements.add({
+          'icon': achievement['icon'],
+          'label': achievement['label'],
+          'color': achievement['color'],
+        });
+      }
+    }
+
+    return realAchievements;
   }
 
   void _showLogoutDialog() {

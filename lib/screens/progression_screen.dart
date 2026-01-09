@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/srs_service.dart';
 import 'package:dualingocoran/services/user_provider.dart';
 import 'package:dualingocoran/services/srs_database_init.dart';
+import 'package:dualingocoran/services/learning_progress_service.dart';
 import 'package:dualingocoran/screens/srs_review_screen.dart';
 
 class ProgressionScreen extends StatefulWidget {
@@ -18,14 +19,9 @@ class ProgressionScreen extends StatefulWidget {
 class _ProgressionScreenState extends State<ProgressionScreen>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
-  final int _totalXP = 1250;
-  final int _currentStreak = 7;
-  final int _bestStreak = 12;
-  final int _lessonsCompleted = 8;
-  final int _totalLessons = 15;
-  final int _accuracy = 87;
   int _pendingReviews = 0;
   bool _isLoadingReviews = true;
+  int _totalLessons = 0;
 
   @override
   void initState() {
@@ -36,6 +32,21 @@ class _ProgressionScreenState extends State<ProgressionScreen>
     );
     _animationController.forward();
     _loadPendingReviews();
+    _loadTotalLessons();
+  }
+
+  Future<void> _loadTotalLessons() async {
+    try {
+      final progressDetails =
+          await LearningProgressService.getLearningProgressDetails();
+      if (mounted) {
+        setState(() {
+          _totalLessons = progressDetails['totalLessons'] ?? 0;
+        });
+      }
+    } catch (e) {
+      print('❌ Erreur lors du chargement du nombre total de leçons: $e');
+    }
   }
 
   Future<void> _loadPendingReviews() async {
@@ -79,6 +90,19 @@ class _ProgressionScreenState extends State<ProgressionScreen>
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final currentUser = userProvider.currentUser;
+
+    // Récupérer les données réelles de l'utilisateur
+    final int totalXP = currentUser?.stats.totalXP ?? 0;
+    final int currentStreak = currentUser?.stats.currentStreak ?? 0;
+    final int bestStreak = currentUser?.stats.bestStreak ?? 0;
+    final int lessonsCompleted = currentUser?.stats.lessonsCompleted ?? 0;
+    final double accuracy = currentUser?.stats.accuracy ?? 0.0;
+    final int totalLessons = _totalLessons > 0
+        ? _totalLessons
+        : (currentUser?.stats.totalLessons ?? 0);
+
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -99,7 +123,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
             child: Column(
               children: [
                 // Header avec XP et Streak
-                _buildHeader(),
+                _buildHeader(totalXP, currentStreak),
                 SizedBox(height: 20),
 
                 // Bouton SRS Review
@@ -107,19 +131,15 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                 SizedBox(height: 20),
 
                 // Statistiques principales
-                _buildMainStats(),
+                _buildMainStats(accuracy, bestStreak),
                 SizedBox(height: 20),
 
                 // Progression des leçons
-                _buildLessonProgress(),
+                _buildLessonProgress(lessonsCompleted, totalLessons),
                 SizedBox(height: 20),
 
                 // Badges et accomplissements
                 _buildBadges(),
-                SizedBox(height: 20),
-
-                // Statistiques détaillées
-                _buildDetailedStats(),
                 SizedBox(height: 20),
               ],
             ),
@@ -129,7 +149,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(int totalXP, int currentStreak) {
     final localizations = AppLocalizations.of(context)!;
     return Container(
           padding: EdgeInsets.all(20),
@@ -166,7 +186,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                         ),
                         SizedBox(width: 8),
                         Text(
-                          '$_currentStreak ${localizations.days}',
+                          '$currentStreak ${localizations.days}',
                           style: GoogleFonts.poppins(
                             color: Colors.orange,
                             fontSize: 14,
@@ -202,7 +222,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                 child: Column(
                   children: [
                     Text(
-                      '$_totalXP',
+                      '$totalXP',
                       style: GoogleFonts.poppins(
                         color: Colors.white,
                         fontSize: 48,
@@ -233,9 +253,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
             onTap: () async {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => SRSReviewScreen(),
-                ),
+                MaterialPageRoute(builder: (context) => SRSReviewScreen()),
               ).then((_) {
                 // Recharger les révisions après retour
                 _loadPendingReviews();
@@ -245,10 +263,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
               padding: EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF667eea),
-                    Color(0xFF764ba2),
-                  ],
+                  colors: [Color(0xFF667eea), Color(0xFF764ba2)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -269,11 +284,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
-                      Icons.repeat,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    child: Icon(Icons.repeat, color: Colors.white, size: 28),
                   ),
                   SizedBox(width: 16),
                   Expanded(
@@ -293,8 +304,8 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                           _isLoadingReviews
                               ? 'Loading...'
                               : _pendingReviews > 0
-                                  ? '$_pendingReviews exercises to review'
-                                  : 'No reviews for today',
+                              ? '$_pendingReviews exercises to review'
+                              : 'No reviews for today',
                           style: GoogleFonts.poppins(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 14,
@@ -303,11 +314,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                       ],
                     ),
                   ),
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.white, size: 20),
                 ],
               ),
             ),
@@ -318,7 +325,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
         .slideX(begin: -0.2, end: 0.0);
   }
 
-  Widget _buildMainStats() {
+  Widget _buildMainStats(double accuracy, int bestStreak) {
     return Container(
           padding: EdgeInsets.symmetric(horizontal: 20),
           child: Row(
@@ -326,7 +333,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
               Expanded(
                 child: _buildStatCard(
                   AppLocalizations.of(context)!.accuracy,
-                  '$_accuracy${AppLocalizations.of(context)!.percent}',
+                  '${accuracy.round()}${AppLocalizations.of(context)!.percent}',
                   Icons.track_changes,
                   Colors.green,
                 ),
@@ -335,7 +342,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
               Expanded(
                 child: _buildStatCard(
                   AppLocalizations.of(context)!.bestStreak,
-                  '$_bestStreak ${AppLocalizations.of(context)!.days}',
+                  '$bestStreak ${AppLocalizations.of(context)!.days}',
                   Icons.emoji_events,
                   Colors.amber,
                 ),
@@ -386,8 +393,8 @@ class _ProgressionScreenState extends State<ProgressionScreen>
     );
   }
 
-  Widget _buildLessonProgress() {
-    final progress = _lessonsCompleted / _totalLessons;
+  Widget _buildLessonProgress(int lessonsCompleted, int totalLessons) {
+    final progress = totalLessons > 0 ? (lessonsCompleted / totalLessons) : 0.0;
 
     return Container(
           margin: EdgeInsets.symmetric(horizontal: 20),
@@ -412,7 +419,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                     ),
                   ),
                   Text(
-                    '$_lessonsCompleted/$_totalLessons',
+                    '$lessonsCompleted/$totalLessons',
                     style: GoogleFonts.poppins(
                       color: Colors.white.withOpacity(0.8),
                       fontSize: 16,
@@ -576,72 +583,6 @@ class _ProgressionScreenState extends State<ProgressionScreen>
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailedStats() {
-    return Container(
-          margin: EdgeInsets.symmetric(horizontal: 20),
-          padding: EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                AppLocalizations.of(context)!.detailedStats,
-                style: GoogleFonts.poppins(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(height: 16),
-
-              _buildStatRow(
-                AppLocalizations.of(context)!.totalStudyTime,
-                '2h 45m',
-              ),
-              _buildStatRow(
-                AppLocalizations.of(context)!.exercisesCompleted,
-                '156',
-              ),
-              _buildStatRow(AppLocalizations.of(context)!.wordsLearned, '89'),
-              _buildStatRow(AppLocalizations.of(context)!.studySessions, '23'),
-              _buildStatRow(AppLocalizations.of(context)!.activeDays, '18'),
-            ],
-          ),
-        )
-        .animate(controller: _animationController)
-        .slideY(begin: 0.3, end: 0.0, delay: Duration(milliseconds: 1000));
-  }
-
-  Widget _buildStatRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.poppins(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 14,
-            ),
-          ),
-          Text(
-            value,
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ],
       ),

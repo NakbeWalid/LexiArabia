@@ -14,7 +14,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
-  bool _soundEnabled = true;
 
   @override
   Widget build(BuildContext context) {
@@ -91,18 +90,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     SizedBox(height: 40),
 
-                    _buildSectionHeader(context, localizations.appearance),
-                    SizedBox(height: 20),
-                    _buildSwitchTile(
-                      context,
-                      icon: Icons.dark_mode_rounded,
-                      title: localizations.enableDarkMode,
-                      value: themeProvider.isDarkMode,
-                      onChanged: (value) => themeProvider.toggleDarkMode(value),
-                    ),
-
-                    SizedBox(height: 40),
-
                     _buildSectionHeader(context, localizations.notifications),
                     SizedBox(height: 20),
                     _buildSwitchTile(
@@ -112,19 +99,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       value: _notificationsEnabled,
                       onChanged: (newValue) {
                         setState(() => _notificationsEnabled = newValue);
-                      },
-                    ),
-
-                    SizedBox(height: 20),
-                    _buildSectionHeader(context, localizations.sound),
-                    SizedBox(height: 20),
-                    _buildSwitchTile(
-                      context,
-                      icon: Icons.graphic_eq,
-                      title: localizations.enableSound,
-                      value: _soundEnabled,
-                      onChanged: (newValue) {
-                        setState(() => _soundEnabled = newValue);
                       },
                     ),
 

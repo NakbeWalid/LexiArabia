@@ -24,11 +24,15 @@ class UserProvider extends ChangeNotifier {
         print('📥 Données brutes chargées depuis Firestore:');
         print('   - progress: ${userData['progress']}');
         print('   - progress.lessons: ${userData['progress']?['lessons']}');
-        
+
         _currentUser = UserModel.fromMap(userId, userData);
         print('✅ Utilisateur chargé: ${_currentUser!.profile.username}');
-        print('📊 Progress.lessons dans le modèle: ${_currentUser!.progress.lessons.keys.toList()}');
-        print('📊 Nombre de leçons dans progress: ${_currentUser!.progress.lessons.length}');
+        print(
+          '📊 Progress.lessons dans le modèle: ${_currentUser!.progress.lessons.keys.toList()}',
+        );
+        print(
+          '📊 Nombre de leçons dans progress: ${_currentUser!.progress.lessons.length}',
+        );
       } else {
         _error = 'Utilisateur non trouvé';
         print('❌ Utilisateur non trouvé: $userId');
@@ -180,13 +184,37 @@ class UserProvider extends ChangeNotifier {
   }
 
   // Marquer une leçon comme terminée
-  Future<void> completeLesson(String lessonId, int score) async {
+  Future<void> completeLesson(
+    String lessonId,
+    int score, {
+    int? xpReward,
+  }) async {
     if (_currentUser == null) return;
 
     try {
-      await UserService.completeLesson(_currentUser!.userId, lessonId, score);
+      await UserService.completeLesson(
+        _currentUser!.userId,
+        lessonId,
+        score,
+        xpReward: xpReward,
+      );
 
-      // Mettre à jour le modèle local
+      // Calculer l'XP basé sur le score (même logique que dans UserService)
+      final xpToAdd =
+          xpReward ?? (50 + (score * 100 / 100).round()).clamp(50, 150);
+      final newXP = _currentUser!.stats.totalXP + xpToAdd;
+      final newLevel = (newXP / 1000).floor() + 1;
+
+      // Recharger les données utilisateur pour obtenir le streak mis à jour
+      await loadUser(_currentUser!.userId);
+
+      // Vérifier et débloquer automatiquement les achievements
+      await UserService.checkAndUnlockAchievements(_currentUser!.userId);
+
+      // Recharger à nouveau pour avoir les achievements mis à jour
+      await loadUser(_currentUser!.userId);
+
+      // Mettre à jour le modèle local avec les nouvelles données
       final updatedLessons = Map<String, LessonProgress>.from(
         _currentUser!.progress.lessons,
       );
@@ -203,11 +231,13 @@ class UserProvider extends ChangeNotifier {
         sections: _currentUser!.progress.sections,
       );
 
+      // Utiliser les stats mises à jour depuis Firestore (incluant le streak)
       final updatedStats = UserStats(
-        totalXP: _currentUser!.stats.totalXP,
-        currentLevel: _currentUser!.stats.currentLevel,
-        currentStreak: _currentUser!.stats.currentStreak,
-        bestStreak: _currentUser!.stats.bestStreak,
+        totalXP: newXP,
+        currentLevel: newLevel,
+        currentStreak:
+            _currentUser!.stats.currentStreak, // Mis à jour par loadUser
+        bestStreak: _currentUser!.stats.bestStreak, // Mis à jour par loadUser
         lessonsCompleted: _currentUser!.stats.lessonsCompleted + 1,
         totalLessons: _currentUser!.stats.totalLessons,
         exercisesCompleted: _currentUser!.stats.exercisesCompleted,
@@ -227,7 +257,9 @@ class UserProvider extends ChangeNotifier {
       );
 
       notifyListeners();
-      print('✅ Leçon terminée: $lessonId (Score: $score)');
+      print(
+        '✅ Leçon terminée: $lessonId (Score: $score, +$xpToAdd XP, Total: $newXP, Niveau: $newLevel)',
+      );
     } catch (e) {
       print('❌ Erreur lors de la complétion de la leçon: $e');
     }

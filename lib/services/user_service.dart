@@ -158,21 +158,33 @@ class UserService {
   static Future<void> completeLesson(
     String userId,
     String lessonId,
-    int score,
-  ) async {
+    int score, {
+    int? xpReward,
+  }) async {
     try {
       print(
         '🔄 Début de complétion de la leçon: $lessonId pour l\'utilisateur: $userId',
       );
       final userRef = _firestore.collection(_usersCollection).doc(userId);
 
+      // Calculer l'XP basé sur le score (par défaut 100 XP pour une leçon complétée)
+      // Plus le score est élevé, plus l'XP est élevé (50-150 XP)
+      final xpToAdd =
+          xpReward ?? (50 + (score * 100 / 100).round()).clamp(50, 150);
+
       await _firestore.runTransaction((transaction) async {
         final userDoc = await transaction.get(userRef);
         if (userDoc.exists) {
           final userData = userDoc.data()!;
           final lessonsCompleted = userData['stats']?['lessonsCompleted'] ?? 0;
+          final currentXP = userData['stats']?['totalXP'] ?? 0;
+          final newXP = currentXP + xpToAdd;
+          final newLevel = (newXP / 1000).floor() + 1;
 
           print('📊 Stats actuelles - lessonsCompleted: $lessonsCompleted');
+          print(
+            '📊 XP actuel: $currentXP, XP à ajouter: $xpToAdd, Nouveau XP: $newXP',
+          );
           print(
             '📊 Progress.lessons avant: ${userData['progress']?['lessons']}',
           );
@@ -180,6 +192,8 @@ class UserService {
           // Préparer la mise à jour
           final updateData = <String, dynamic>{
             'stats.lessonsCompleted': lessonsCompleted + 1,
+            'stats.totalXP': newXP,
+            'stats.currentLevel': newLevel,
             'progress.lessons.$lessonId.completed': true,
             'progress.lessons.$lessonId.completedAt':
                 FieldValue.serverTimestamp(),
@@ -198,7 +212,7 @@ class UserService {
           transaction.update(userRef, updateData);
 
           print(
-            '✅ Transaction préparée pour mettre à jour progress.lessons.$lessonId',
+            '✅ Transaction préparée pour mettre à jour progress.lessons.$lessonId avec +$xpToAdd XP',
           );
         } else {
           print('❌ Document utilisateur non trouvé: $userId');
@@ -278,6 +292,152 @@ class UserService {
       }
     } catch (e) {
       print('❌ Erreur lors de la création de l\'utilisateur: $e');
+    }
+  }
+
+  /// Débloquer un achievement pour un utilisateur
+  static Future<void> unlockAchievement(
+    String userId,
+    String achievementId, {
+    int? progress,
+  }) async {
+    try {
+      final userRef = _firestore.collection(_usersCollection).doc(userId);
+      final now = FieldValue.serverTimestamp();
+
+      // Vérifier si l'achievement existe dans la collection achievements
+      final achievementDoc = await _firestore
+          .collection(_achievementsCollection)
+          .doc(achievementId)
+          .get();
+
+      if (!achievementDoc.exists) {
+        print(
+          '⚠️ Achievement $achievementId n\'existe pas dans la collection achievements',
+        );
+        // On continue quand même pour permettre les tests
+      }
+
+      // Mettre à jour l'achievement de l'utilisateur
+      await userRef.update({
+        'achievements.$achievementId': {
+          'unlocked': true,
+          'unlockedAt': now,
+          'progress': progress ?? 100,
+        },
+        'lastActive': now,
+      });
+
+      // Si l'achievement a une récompense XP, l'ajouter
+      if (achievementDoc.exists) {
+        final achievementData = achievementDoc.data();
+        final rewards = achievementData?['rewards'] as Map<String, dynamic>?;
+        final xpReward = rewards?['xp'] as int?;
+
+        if (xpReward != null && xpReward > 0) {
+          await addXP(userId, xpReward);
+          print('✅ ${xpReward} XP ajoutés pour l\'achievement $achievementId');
+        }
+      }
+
+      print(
+        '✅ Achievement $achievementId débloqué pour l\'utilisateur $userId',
+      );
+    } catch (e) {
+      print('❌ Erreur lors du déblocage de l\'achievement: $e');
+      rethrow;
+    }
+  }
+
+  /// Vérifier et débloquer automatiquement les achievements basés sur les stats
+  static Future<void> checkAndUnlockAchievements(String userId) async {
+    try {
+      final userData = await getUserData(userId);
+      if (userData == null) return;
+
+      final stats = userData['stats'] as Map<String, dynamic>? ?? {};
+      final achievements = await getAllAchievements();
+
+      for (final achievement in achievements) {
+        final achievementId = achievement['id'] as String;
+        final requirements =
+            achievement['requirements'] as Map<String, dynamic>?;
+
+        if (requirements == null) continue;
+
+        final type = requirements['type'] as String?;
+        final value = requirements['value'] as num?;
+        final condition = requirements['condition'] as String? ?? '>=';
+
+        if (type == null || value == null) continue;
+
+        // Vérifier si l'achievement est déjà débloqué
+        final userAchievements =
+            userData['achievements'] as Map<String, dynamic>? ?? {};
+        if (userAchievements[achievementId]?['unlocked'] == true) {
+          continue; // Déjà débloqué
+        }
+
+        // Gérer les valeurs décimales (pour accuracy, study_time, etc.)
+        final numValue = value.toDouble();
+        final numUserValue =
+            (stats[_getStatKey(type)] as num?)?.toDouble() ?? 0.0;
+
+        // Vérifier les critères
+        bool shouldUnlock = false;
+
+        switch (condition) {
+          case '>=':
+            shouldUnlock = numUserValue >= numValue;
+            break;
+          case '==':
+            shouldUnlock = numUserValue == numValue;
+            break;
+          case '>':
+            shouldUnlock = numUserValue > numValue;
+            break;
+          case '<=':
+            shouldUnlock = numUserValue <= numValue;
+            break;
+          case '<':
+            shouldUnlock = numUserValue < numValue;
+            break;
+          default:
+            shouldUnlock = numUserValue >= numValue;
+        }
+
+        if (shouldUnlock) {
+          await unlockAchievement(userId, achievementId);
+        }
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la vérification des achievements: $e');
+    }
+  }
+
+  /// Mapper le type d'achievement vers la clé de stat
+  static String _getStatKey(String type) {
+    switch (type) {
+      case 'lessons':
+        return 'lessonsCompleted';
+      case 'xp':
+        return 'totalXP';
+      case 'streak':
+        return 'currentStreak';
+      case 'best_streak':
+        return 'bestStreak';
+      case 'level':
+        return 'currentLevel';
+      case 'accuracy':
+        return 'accuracy';
+      case 'study_time':
+        return 'totalStudyTime';
+      case 'words':
+        return 'wordsLearned';
+      case 'exercises':
+        return 'exercisesCompleted';
+      default:
+        return type;
     }
   }
 }

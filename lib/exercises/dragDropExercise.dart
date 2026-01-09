@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:dualingocoran/services/sound_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -153,10 +154,13 @@ class _DragDropExerciseState extends State<DragDropExercise>
           '🎉 Exercise completed successfully! Calling onNext in 2 seconds...',
         );
         HapticFeedback.lightImpact();
-        try {
-          await _audioPlayer.play(AssetSource('sounds/success.mp3'));
-        } catch (e) {
-          print('Audio error: $e');
+        final soundEnabled = await SoundService.isSoundEnabled();
+        if (soundEnabled) {
+          try {
+            await _audioPlayer.play(AssetSource('sounds/success.mp3'));
+          } catch (e) {
+            print('Audio error: $e');
+          }
         }
         if (mounted) _pulseController.forward();
 
@@ -186,14 +190,15 @@ class _DragDropExerciseState extends State<DragDropExercise>
         });
       } else {
         // ❌ RÉPONSE INCORRECTE - Permettre de réessayer
-        print(
-          '⚠️ Wrong answer! Allowing retry...',
-        );
+        print('⚠️ Wrong answer! Allowing retry...');
         HapticFeedback.mediumImpact();
-        try {
-          await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
-        } catch (e) {
-          print('Audio error: $e');
+        final soundEnabled = await SoundService.isSoundEnabled();
+        if (soundEnabled) {
+          try {
+            await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
+          } catch (e) {
+            print('Audio error: $e');
+          }
         }
 
         ScaffoldMessenger.of(context).showSnackBar(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:dualingocoran/services/sound_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
@@ -41,7 +42,7 @@ class _PairsExerciseState extends State<PairsExercise>
 
   // Flag pour savoir si on a déjà initialisé les traductions
   bool _translationsInitialized = false;
-  
+
   // Flag pour savoir si on a déjà vérifié et qu'il y a des erreurs
   bool _hasErrors = false;
 
@@ -247,10 +248,13 @@ class _PairsExerciseState extends State<PairsExercise>
       if (allCorrect) {
         // ✅ TOUTES LES RÉPONSES SONT CORRECTES
         if (mounted) _successController.forward();
-        try {
-          await _audioPlayer.play(AssetSource('sounds/success.mp3'));
-        } catch (e) {
-          print('Audio error: $e');
+        final soundEnabled = await SoundService.isSoundEnabled();
+        if (soundEnabled) {
+          try {
+            await _audioPlayer.play(AssetSource('sounds/success.mp3'));
+          } catch (e) {
+            print('Audio error: $e');
+          }
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -274,15 +278,21 @@ class _PairsExerciseState extends State<PairsExercise>
         );
 
         // Passer à l'exercice suivant après 0.8 secondes
-        Future.delayed(const Duration(milliseconds: 800), () => widget.onNext(true)); // Toutes les paires sont correctes
+        Future.delayed(
+          const Duration(milliseconds: 800),
+          () => widget.onNext(true),
+        ); // Toutes les paires sont correctes
       } else {
         // ❌ CERTAINES RÉPONSES SONT INCORRECTES - Permettre de réessayer
         _hasErrors = true; // Marquer qu'il y a des erreurs
         HapticFeedback.mediumImpact();
-        try {
-          await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
-        } catch (e) {
-          print('Audio error: $e');
+        final soundEnabled = await SoundService.isSoundEnabled();
+        if (soundEnabled) {
+          try {
+            await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
+          } catch (e) {
+            print('Audio error: $e');
+          }
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -311,7 +321,7 @@ class _PairsExerciseState extends State<PairsExercise>
       }
     }
   }
-  
+
   // Méthode pour déconnecter une paire
   void _disconnectPair(String leftItem, String rightItem) {
     setState(() {
@@ -583,23 +593,7 @@ class _PairsExerciseState extends State<PairsExercise>
                 ],
               ),
 
-              // Connection lines overlay
-              if (userPairs.isNotEmpty)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(
-                      painter: ConnectionLinesPainter(
-                        userPairs: userPairs,
-                        correctPairs: correctPairs,
-                        leftItems: leftItems,
-                        rightItems: rightItems,
-                        context: context,
-                        leftItemKeys: leftItemKeys,
-                        rightItemKeys: rightItemKeys,
-                      ),
-                    ),
-                  ),
-                ),
+              // Lignes de connexion supprimées
             ],
           ),
         ),
@@ -611,7 +605,10 @@ class _PairsExerciseState extends State<PairsExercise>
     bool isSelected = selectedLeftItem == item;
     bool isConnected = connectedItems.contains(item);
     // Vérifier si la connexion est correcte
-    bool isCorrect = isConnected && userPairs.containsKey(item) && correctPairs[item] == userPairs[item];
+    bool isCorrect =
+        isConnected &&
+        userPairs.containsKey(item) &&
+        correctPairs[item] == userPairs[item];
 
     print(
       "🔍 Left Item: $item - isSelected: $isSelected - isConnected: $isConnected - isCorrect: $isCorrect",
@@ -644,8 +641,8 @@ class _PairsExerciseState extends State<PairsExercise>
                       ? [Colors.yellow.shade400, Colors.orange.shade500]
                       : isConnected
                       ? isCorrect
-                          ? [Colors.green.shade400, Colors.green.shade600]
-                          : [Colors.red.shade400, Colors.red.shade600]
+                            ? [Colors.green.shade400, Colors.green.shade600]
+                            : [Colors.red.shade400, Colors.red.shade600]
                       : [
                           Colors.white.withOpacity(0.9),
                           Colors.white.withOpacity(0.7),
@@ -719,7 +716,10 @@ class _PairsExerciseState extends State<PairsExercise>
         onTap: () {
           print("🖱️ Right item tapped: $item");
           // Si connecté et incorrect, permettre de déconnecter
-          if (isConnected && _hasErrors && !isCorrect && connectedLeftItem != null) {
+          if (isConnected &&
+              _hasErrors &&
+              !isCorrect &&
+              connectedLeftItem != null) {
             // Déconnecter la paire incorrecte
             _disconnectPair(connectedLeftItem, item);
           } else {
@@ -784,87 +784,4 @@ class _PairsExerciseState extends State<PairsExercise>
   }
 }
 
-class ConnectionLinesPainter extends CustomPainter {
-  final Map<String, String> userPairs;
-  final Map<String, String> correctPairs;
-  final List<String> leftItems;
-  final List<String> rightItems;
-  final BuildContext context;
-  final Map<String, GlobalKey> leftItemKeys;
-  final Map<String, GlobalKey> rightItemKeys;
-
-  ConnectionLinesPainter({
-    required this.userPairs,
-    required this.correctPairs,
-    required this.leftItems,
-    required this.rightItems,
-    required this.context,
-    required this.leftItemKeys,
-    required this.rightItemKeys,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
-
-    for (var entry in userPairs.entries) {
-      final leftItem = entry.key;
-      final rightItem = entry.value;
-
-      // Obtenir les vraies positions des éléments
-      final leftKey = leftItemKeys[leftItem];
-      final rightKey = rightItemKeys[rightItem];
-
-      if (leftKey?.currentContext != null && rightKey?.currentContext != null) {
-        final leftRenderBox =
-            leftKey!.currentContext!.findRenderObject() as RenderBox;
-        final rightRenderBox =
-            rightKey!.currentContext!.findRenderObject() as RenderBox;
-
-        final leftPosition = leftRenderBox.localToGlobal(Offset.zero);
-        final rightPosition = rightRenderBox.localToGlobal(Offset.zero);
-
-        // Convertir en coordonnées locales du canvas
-        final leftX =
-            leftPosition.dx +
-            leftRenderBox.size.width * 1; // Position X dans l'élément
-        final rightX = rightPosition.dx; // Position X dans l'élément
-        final leftY =
-            leftPosition.dy + leftRenderBox.size.height / 2; // Centre Y
-        final rightY =
-            rightPosition.dy + rightRenderBox.size.height / 2; // Centre Y
-
-        // Vérifier si la connexion est correcte
-        final isCorrect = correctPairs[leftItem] == rightItem;
-
-        // Couleur de la ligne
-        paint.color = isCorrect ? Colors.greenAccent : Colors.redAccent;
-
-        // Dessiner la ligne avec une courbe
-        final path = Path();
-        path.moveTo(leftX, leftY);
-
-        // Créer une courbe douce
-        final controlPoint1 = Offset(leftX + (rightX - leftX) * 0.3, leftY);
-        final controlPoint2 = Offset(leftX + (rightX - leftX) * 0.7, rightY);
-        path.cubicTo(
-          controlPoint1.dx,
-          controlPoint1.dy,
-          controlPoint2.dx,
-          controlPoint2.dy,
-          rightX,
-          rightY,
-        );
-
-        canvas.drawPath(path, paint);
-
-        // Ajouter une flèche à la fin
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
+// ConnectionLinesPainter supprimé - lignes de connexion enlevées

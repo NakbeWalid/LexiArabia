@@ -29,12 +29,44 @@ class SRSService {
   }) async {
     try {
       // Générer un ID unique pour l'exercice SRS
-      final exerciseId = '${lessonId}_${exerciseIndex}_${DateTime.now().millisecondsSinceEpoch}';
-      
+      final exerciseId =
+          '${lessonId}_${exerciseIndex}_${DateTime.now().millisecondsSinceEpoch}';
+
       final now = DateTime.now();
       final settings = await getSettings(userId);
-      
+
       // Créer l'exercice SRS avec statut "new"
+      // IMPORTANT: Utiliser rawData si disponible pour préserver les traductions
+      // Sinon, créer un objet avec les données disponibles
+      Map<String, dynamic> exerciseDataToSave;
+      if (exercise.rawData != null) {
+        // Utiliser les données brutes pour préserver les Maps de traductions
+        exerciseDataToSave = Map<String, dynamic>.from(exercise.rawData!);
+        // S'assurer que le type est présent
+        exerciseDataToSave['type'] = exercise.type;
+
+        // IMPORTANT: Pour les exercices pairs/drag_drop, s'assurer que dragDropPairs est présent
+        // même si rawData contient seulement 'pairs'
+        if ((exercise.type == 'pairs' || exercise.type == 'drag_drop') &&
+            exercise.dragDropPairs != null &&
+            exerciseDataToSave['dragDropPairs'] == null) {
+          exerciseDataToSave['dragDropPairs'] = exercise.dragDropPairs;
+          print(
+            '✅ Added dragDropPairs to exerciseData for ${exercise.type} exercise',
+          );
+        }
+      } else {
+        // Fallback: créer un objet avec les données disponibles
+        exerciseDataToSave = {
+          'question': exercise.question,
+          'type': exercise.type,
+          'options': exercise.options,
+          'answer': exercise.answer,
+          'audioUrl': exercise.audioUrl,
+          'dragDropPairs': exercise.dragDropPairs,
+        };
+      }
+
       final srsExercise = SRSExercise(
         exerciseId: exerciseId,
         lessonId: lessonId,
@@ -47,14 +79,7 @@ class SRSService {
         status: 'new',
         lastReviewed: null,
         createdAt: now,
-        exerciseData: {
-          'question': exercise.question,
-          'type': exercise.type,
-          'options': exercise.options,
-          'answer': exercise.answer,
-          'audioUrl': exercise.audioUrl,
-          'dragDropPairs': exercise.dragDropPairs,
-        },
+        exerciseData: exerciseDataToSave,
         totalReviews: 0,
         correctReviews: 0,
         incorrectReviews: 0,
@@ -137,7 +162,7 @@ class SRSService {
     try {
       final settings = await getSettings(userId);
       final qualityLabel = SRSReview.getQualityLabel(quality);
-      
+
       // Récupérer l'exercice actuel
       final exerciseDoc = await _firestore
           .collection('users')
@@ -151,7 +176,7 @@ class SRSService {
       }
 
       final currentExercise = SRSExercise.fromMap(exerciseDoc.data()!);
-      
+
       // Sauvegarder l'état avant
       final intervalBefore = currentExercise.interval;
       final easeFactorBefore = currentExercise.easeFactor;
@@ -186,14 +211,14 @@ class SRSService {
       // Mettre à jour les statistiques
       final updatedStats = updatedExercise.copyWith(
         totalReviews: currentExercise.totalReviews + 1,
-        correctReviews: quality >= 2 
-            ? currentExercise.correctReviews + 1 
+        correctReviews: quality >= 2
+            ? currentExercise.correctReviews + 1
             : currentExercise.correctReviews,
-        incorrectReviews: quality == 0 
-            ? currentExercise.incorrectReviews + 1 
+        incorrectReviews: quality == 0
+            ? currentExercise.incorrectReviews + 1
             : currentExercise.incorrectReviews,
-        hardReviews: quality == 1 
-            ? currentExercise.hardReviews + 1 
+        hardReviews: quality == 1
+            ? currentExercise.hardReviews + 1
             : currentExercise.hardReviews,
         lastQuality: quality,
         lastReviewed: DateTime.now(),
@@ -225,8 +250,12 @@ class SRSService {
       await batch.commit();
 
       print('✅ Révision enregistrée: $qualityLabel pour $exerciseId');
-      print('   Intervalle: ${intervalBefore.toStringAsFixed(1)} → ${updatedExercise.interval.toStringAsFixed(1)} jours');
-      print('   Facilité: ${easeFactorBefore.toStringAsFixed(2)} → ${updatedExercise.easeFactor.toStringAsFixed(2)}');
+      print(
+        '   Intervalle: ${intervalBefore.toStringAsFixed(1)} → ${updatedExercise.interval.toStringAsFixed(1)} jours',
+      );
+      print(
+        '   Facilité: ${easeFactorBefore.toStringAsFixed(2)} → ${updatedExercise.easeFactor.toStringAsFixed(2)}',
+      );
     } catch (e) {
       print('❌ Erreur lors de l\'enregistrement de la révision: $e');
       rethrow;
@@ -247,7 +276,8 @@ class SRSService {
 
     // Obtenir l'intervalle initial pour cette qualité
     final qualityLabel = SRSReview.getQualityLabel(quality);
-    final initialIntervalForQuality = settings.initialIntervals[qualityLabel] ?? 1.0;
+    final initialIntervalForQuality =
+        settings.initialIntervals[qualityLabel] ?? 1.0;
 
     if (quality == 0) {
       // AGAIN - Recommencer
@@ -255,10 +285,8 @@ class SRSService {
       newRepetitions = 0;
       newStatus = 'learning';
       // Réduire le facteur de facilité
-      newEaseFactor = (newEaseFactor + settings.easeFactorChange['AGAIN']!).clamp(
-        settings.easeFactorMin,
-        settings.easeFactorMax,
-      );
+      newEaseFactor = (newEaseFactor + settings.easeFactorChange['AGAIN']!)
+          .clamp(settings.easeFactorMin, settings.easeFactorMax);
     } else if (quality == 1) {
       // HARD
       if (currentExercise.repetitions == 0) {
@@ -272,10 +300,8 @@ class SRSService {
       newRepetitions = currentExercise.repetitions;
       newStatus = currentExercise.repetitions == 0 ? 'learning' : 'review';
       // Réduire légèrement le facteur de facilité
-      newEaseFactor = (newEaseFactor + settings.easeFactorChange['HARD']!).clamp(
-        settings.easeFactorMin,
-        settings.easeFactorMax,
-      );
+      newEaseFactor = (newEaseFactor + settings.easeFactorChange['HARD']!)
+          .clamp(settings.easeFactorMin, settings.easeFactorMax);
     } else if (quality == 2) {
       // GOOD
       if (currentExercise.repetitions == 0) {
@@ -302,18 +328,15 @@ class SRSService {
         newRepetitions = 1;
         newStatus = 'review';
       } else {
-        newInterval = (currentExercise.interval * newEaseFactor * settings.easyBonus).clamp(
-          settings.minimumInterval,
-          settings.maximumInterval,
-        );
+        newInterval =
+            (currentExercise.interval * newEaseFactor * settings.easyBonus)
+                .clamp(settings.minimumInterval, settings.maximumInterval);
         newRepetitions = currentExercise.repetitions + 1;
         newStatus = 'review';
       }
       // Augmenter légèrement le facteur de facilité
-      newEaseFactor = (newEaseFactor + settings.easeFactorChange['EASY']!).clamp(
-        settings.easeFactorMin,
-        settings.easeFactorMax,
-      );
+      newEaseFactor = (newEaseFactor + settings.easeFactorChange['EASY']!)
+          .clamp(settings.easeFactorMin, settings.easeFactorMax);
     }
 
     // Appliquer le modificateur d'intervalle global
@@ -373,7 +396,10 @@ class SRSService {
   }
 
   /// Supprimer un exercice SRS (optionnel)
-  static Future<void> deleteSRSExercise(String userId, String exerciseId) async {
+  static Future<void> deleteSRSExercise(
+    String userId,
+    String exerciseId,
+  ) async {
     try {
       await _firestore
           .collection('users')
@@ -388,4 +414,3 @@ class SRSService {
     }
   }
 }
-

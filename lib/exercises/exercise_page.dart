@@ -10,6 +10,7 @@ import 'package:dualingocoran/services/daily_limit_service.dart';
 import 'package:dualingocoran/services/user_provider.dart';
 import 'package:dualingocoran/services/srs_service.dart';
 import 'package:dualingocoran/services/srs_database_init.dart';
+import 'package:dualingocoran/services/sound_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -39,6 +40,9 @@ class _ExercisePageState extends State<ExercisePage>
   Map<int, DateTime> exerciseStartTimes = {}; // index -> temps de début
   Map<int, int> exerciseAttempts = {}; // index -> nombre d'essais
 
+  // État du son
+  bool _soundEnabled = true;
+
   @override
   void initState() {
     super.initState();
@@ -55,6 +59,27 @@ class _ExercisePageState extends State<ExercisePage>
     // Initialiser le tracking pour le premier exercice
     exerciseStartTimes[0] = DateTime.now();
     exerciseAttempts[0] = 0;
+
+    // Charger l'état du son
+    _loadSoundState();
+  }
+
+  Future<void> _loadSoundState() async {
+    final enabled = await SoundService.isSoundEnabled();
+    if (mounted) {
+      setState(() {
+        _soundEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleSound() async {
+    final newState = await SoundService.toggleSound();
+    if (mounted) {
+      setState(() {
+        _soundEnabled = newState;
+      });
+    }
   }
 
   @override
@@ -444,7 +469,7 @@ class _ExercisePageState extends State<ExercisePage>
                   padding: EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      // Header with back button and progress
+                      // Header with back button, sound control, and progress
                       Row(
                         children: [
                           IconButton(
@@ -500,7 +525,20 @@ class _ExercisePageState extends State<ExercisePage>
                               ],
                             ),
                           ),
-
+                          // Sound control button
+                          IconButton(
+                            onPressed: _toggleSound,
+                            icon: Icon(
+                              _soundEnabled
+                                  ? Icons.volume_up
+                                  : Icons.volume_off,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                            tooltip: _soundEnabled
+                                ? 'Désactiver le son'
+                                : 'Activer le son',
+                          ),
                           // XP indicator
                           Container(
                             padding: EdgeInsets.symmetric(

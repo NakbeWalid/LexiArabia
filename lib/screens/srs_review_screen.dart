@@ -28,7 +28,8 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
   bool _isLoading = true;
   int _currentIndex = 0;
   Map<String, Exercise> _exerciseCache = {}; // Cache pour les exercices
-  Map<String, DateTime> _exerciseStartTimes = {}; // exerciseId -> temps de début
+  Map<String, DateTime> _exerciseStartTimes =
+      {}; // exerciseId -> temps de début
   Map<String, int> _exerciseAttempts = {}; // exerciseId -> nombre d'essais
 
   @override
@@ -87,18 +88,111 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
   /// Convertir un SRSExercise en Exercise pour l'affichage
   Exercise _convertSRSToExercise(SRSExercise srsExercise) {
     final exerciseData = srsExercise.exerciseData;
+
+    // Extraire la question (peut être String ou Map avec traductions)
+    String question = '';
+    if (exerciseData['question'] != null) {
+      if (exerciseData['question'] is Map) {
+        // C'est une Map de traductions, prendre l'anglais comme fallback
+        final questionMap = exerciseData['question'] as Map<String, dynamic>;
+        question =
+            questionMap['en']?.toString() ??
+            questionMap['fr']?.toString() ??
+            questionMap['ar']?.toString() ??
+            questionMap.values.first?.toString() ??
+            '';
+      } else {
+        question = exerciseData['question'].toString();
+      }
+    }
+
+    // Extraire la réponse (peut être String ou Map avec traductions)
+    String? answer;
+    if (exerciseData['answer'] != null) {
+      if (exerciseData['answer'] is Map) {
+        final answerMap = exerciseData['answer'] as Map<String, dynamic>;
+        answer =
+            answerMap['en']?.toString() ??
+            answerMap['fr']?.toString() ??
+            answerMap['ar']?.toString() ??
+            answerMap.values.first?.toString();
+      } else {
+        answer = exerciseData['answer'].toString();
+      }
+    }
+
+    // Extraire les options (peut être List ou Map avec traductions)
+    List<String>? options;
+    if (exerciseData['options'] != null) {
+      if (exerciseData['options'] is List) {
+        options = List<String>.from(exerciseData['options']);
+      } else if (exerciseData['options'] is Map) {
+        // C'est une Map de traductions, prendre l'anglais comme fallback
+        final optionsMap = exerciseData['options'] as Map<String, dynamic>;
+        if (optionsMap['en'] is List) {
+          options = (optionsMap['en'] as List)
+              .map((e) => e.toString())
+              .toList();
+        } else if (optionsMap['fr'] is List) {
+          options = (optionsMap['fr'] as List)
+              .map((e) => e.toString())
+              .toList();
+        } else if (optionsMap['ar'] is List) {
+          options = (optionsMap['ar'] as List)
+              .map((e) => e.toString())
+              .toList();
+        }
+      }
+    }
+
+    // Extraire les dragDropPairs (peut être directement dragDropPairs ou pairs à convertir)
+    List<Map<String, dynamic>>? dragDropPairs;
+    if (exerciseData['dragDropPairs'] != null) {
+      // Si dragDropPairs existe déjà, l'utiliser directement
+      dragDropPairs = List<Map<String, dynamic>>.from(
+        exerciseData['dragDropPairs'],
+      );
+    } else if (exerciseData['pairs'] != null &&
+        (srsExercise.exerciseType == 'pairs' ||
+            srsExercise.exerciseType == 'drag_drop')) {
+      // Si pairs existe, le convertir en dragDropPairs (comme dans Exercise.fromJson)
+      print('🔄 Converting pairs to dragDropPairs for SRS exercise');
+      if (exerciseData['pairs'] is List) {
+        // Nouvelle structure: pairs est un tableau d'objets avec from et to
+        List<dynamic> pairsList = exerciseData['pairs'] as List;
+        dragDropPairs = pairsList
+            .where(
+              (pair) =>
+                  pair is Map && pair['from'] != null && pair['to'] != null,
+            )
+            .map(
+              (pair) => {
+                'from': pair['from'].toString(),
+                'to': pair['to'].toString(),
+              },
+            )
+            .toList();
+        print('✅ Converted ${dragDropPairs.length} pairs from List format');
+      } else if (exerciseData['pairs'] is Map) {
+        // Ancienne structure: pairs est un Map
+        Map<String, dynamic> pairs =
+            exerciseData['pairs'] as Map<String, dynamic>;
+        dragDropPairs = pairs.entries
+            .map((e) => {'from': e.key, 'to': e.value.toString()})
+            .toList();
+        print('✅ Converted ${dragDropPairs.length} pairs from Map format');
+      }
+    }
+
     return Exercise(
       type: srsExercise.exerciseType,
-      question: exerciseData['question'] ?? '',
-      options: exerciseData['options'] != null
-          ? List<String>.from(exerciseData['options'])
-          : null,
-      answer: exerciseData['answer'],
+      question: question,
+      options: options,
+      answer: answer,
       audioUrl: exerciseData['audioUrl'],
-      dragDropPairs: exerciseData['dragDropPairs'] != null
-          ? List<Map<String, dynamic>>.from(exerciseData['dragDropPairs'])
-          : null,
-      rawData: exerciseData,
+      dragDropPairs: dragDropPairs,
+      rawData:
+          exerciseData, // IMPORTANT: Garder les données brutes pour les traductions
     );
   }
 
@@ -112,10 +206,11 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
     const int perfectAttempts = 1;
     const int goodAttempts = 2;
     const int hardAttempts = 3;
-    
+
     if (attempts == perfectAttempts && timeInSeconds <= fastTimeThreshold) {
       return 3; // EASY
-    } else if (attempts == perfectAttempts && timeInSeconds <= slowTimeThreshold) {
+    } else if (attempts == perfectAttempts &&
+        timeInSeconds <= slowTimeThreshold) {
       return 2; // GOOD
     } else if (attempts <= goodAttempts && timeInSeconds <= slowTimeThreshold) {
       return 2; // GOOD
@@ -127,9 +222,12 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
   }
 
   /// Gérer la notation automatique d'un exercice
-  Future<void> _handleAutomaticRating(String exerciseId, bool wasCorrect) async {
+  Future<void> _handleAutomaticRating(
+    String exerciseId,
+    bool wasCorrect,
+  ) async {
     if (!wasCorrect) return; // Ne pas enregistrer si incorrect
-    
+
     try {
       final userProvider = Provider.of<UserProvider>(context, listen: false);
       final userId = userProvider.currentUser?.userId;
@@ -248,11 +346,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
               end: Alignment.bottomRight,
             ),
           ),
-          child: Center(
-            child: CircularProgressIndicator(
-              color: Colors.white,
-            ),
-          ),
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
         ),
       );
     }
@@ -361,7 +455,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
           exercise: currentExercise,
           onNext: (isCorrect) {
             setState(() {
-              _exerciseAttempts[currentSRSExercise.exerciseId] = 
+              _exerciseAttempts[currentSRSExercise.exerciseId] =
                   (_exerciseAttempts[currentSRSExercise.exerciseId] ?? 0) + 1;
             });
             _handleAutomaticRating(currentSRSExercise.exerciseId, isCorrect);
@@ -373,7 +467,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
           exercise: currentExercise,
           onNext: (isCorrect) {
             setState(() {
-              _exerciseAttempts[currentSRSExercise.exerciseId] = 
+              _exerciseAttempts[currentSRSExercise.exerciseId] =
                   (_exerciseAttempts[currentSRSExercise.exerciseId] ?? 0) + 1;
             });
             _handleAutomaticRating(currentSRSExercise.exerciseId, isCorrect);
@@ -385,7 +479,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
           exercise: currentExercise,
           onNext: (isCorrect) {
             setState(() {
-              _exerciseAttempts[currentSRSExercise.exerciseId] = 
+              _exerciseAttempts[currentSRSExercise.exerciseId] =
                   (_exerciseAttempts[currentSRSExercise.exerciseId] ?? 0) + 1;
             });
             _handleAutomaticRating(currentSRSExercise.exerciseId, isCorrect);
@@ -397,7 +491,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
           exercise: currentExercise,
           onNext: (isCorrect) {
             setState(() {
-              _exerciseAttempts[currentSRSExercise.exerciseId] = 
+              _exerciseAttempts[currentSRSExercise.exerciseId] =
                   (_exerciseAttempts[currentSRSExercise.exerciseId] ?? 0) + 1;
             });
             _handleAutomaticRating(currentSRSExercise.exerciseId, isCorrect);
@@ -409,7 +503,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
           exercise: currentExercise,
           onNext: (isCorrect) {
             setState(() {
-              _exerciseAttempts[currentSRSExercise.exerciseId] = 
+              _exerciseAttempts[currentSRSExercise.exerciseId] =
                   (_exerciseAttempts[currentSRSExercise.exerciseId] ?? 0) + 1;
             });
             _handleAutomaticRating(currentSRSExercise.exerciseId, isCorrect);
@@ -486,7 +580,8 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
                                 borderRadius: BorderRadius.circular(4),
                                 child: FractionallySizedBox(
                                   widthFactor:
-                                      (_currentIndex + 1) / _allExercises.length,
+                                      (_currentIndex + 1) /
+                                      _allExercises.length,
                                   child: Container(
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
@@ -510,10 +605,8 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
               ),
             ),
           ).animate().fadeIn().slideY(begin: -0.5),
-
         ],
       ),
     );
   }
 }
-

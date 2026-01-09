@@ -96,7 +96,7 @@ class DailyLimitService {
     }
   }
 
-  /// Incrémente le compteur de leçons complétées aujourd'hui
+  /// Incrémente le compteur de leçons complétées aujourd'hui et met à jour le streak
   static Future<void> incrementLessonCount() async {
     try {
       final userId = _getCurrentUserId();
@@ -124,6 +124,7 @@ class DailyLimitService {
               'lastLessonDate': todayString,
               'lessonsCompletedToday': 1,
             },
+            'stats': {'currentStreak': 1, 'bestStreak': 1},
           }, SetOptions(merge: true));
           return;
         }
@@ -134,17 +135,52 @@ class DailyLimitService {
         final lastDateString = dailyProgress['lastLessonDate'] as String?;
         int lessonsToday = dailyProgress['lessonsCompletedToday'] as int? ?? 0;
 
-        // Si c'est un nouveau jour, réinitialiser le compteur
-        if (lastDateString != todayString) {
+        // Récupérer le streak actuel
+        final stats = data?['stats'] as Map<String, dynamic>? ?? {};
+        final currentStreak = stats['currentStreak'] as int? ?? 0;
+        final bestStreak = stats['bestStreak'] as int? ?? 0;
+
+        // Si c'est un nouveau jour, réinitialiser le compteur et mettre à jour le streak
+        bool isNewDay = lastDateString != todayString;
+        if (isNewDay) {
           lessonsToday = 0;
         }
 
         // Incrémenter le compteur
         lessonsToday++;
 
+        // Calculer le nouveau streak
+        int newStreak;
+        if (isNewDay) {
+          // Vérifier si la dernière leçon était hier (streak maintenu)
+          if (lastDateString != null) {
+            final lastDate = DateTime.parse(lastDateString);
+            final yesterday = today.subtract(Duration(days: 1));
+            final isYesterday =
+                lastDate.year == yesterday.year &&
+                lastDate.month == yesterday.month &&
+                lastDate.day == yesterday.day;
+
+            // Si la dernière leçon était hier, maintenir le streak (+1)
+            // Sinon, réinitialiser à 1 (première leçon du jour)
+            newStreak = isYesterday ? currentStreak + 1 : 1;
+          } else {
+            // Pas de date précédente, commencer à 1
+            newStreak = 1;
+          }
+        } else {
+          // Même jour, maintenir le streak actuel (ne pas l'incrémenter plusieurs fois par jour)
+          newStreak = currentStreak > 0 ? currentStreak : 1;
+        }
+
+        // Mettre à jour le meilleur streak si nécessaire
+        int newBestStreak = newStreak > bestStreak ? newStreak : bestStreak;
+
         transaction.update(userRef, {
           'dailyProgress.lastLessonDate': todayString,
           'dailyProgress.lessonsCompletedToday': lessonsToday,
+          'stats.currentStreak': newStreak,
+          'stats.bestStreak': newBestStreak,
         });
       });
 

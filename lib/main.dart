@@ -16,6 +16,7 @@ import 'package:dualingocoran/services/theme_provider.dart';
 import 'package:dualingocoran/services/user_provider.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:dualingocoran/utils/translation_helper.dart';
+import 'package:dualingocoran/utils/font_helper.dart';
 import 'package:dualingocoran/screens/login_screen.dart';
 import 'package:dualingocoran/screens/onboarding_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,7 +24,47 @@ import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dualingocoran/services/learning_progress_service.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:dualingocoran/test_srs_init.dart';
+
+/// Modifie une leçon existante avec un JSON partiel
+///
+/// [lessonId] : L'ID de la leçon à modifier
+/// [updates] : Map contenant uniquement les champs à modifier
+///
+/// Exemple d'utilisation :
+/// ```dart
+/// await modifierLecon('Demonstrative Pronouns 1', {
+///   'title': 'Nouveau titre',
+///   'learningPercentage': 15.0,
+/// });
+/// ```
+Future<void> modifierLecon(
+  String lessonId,
+  Map<String, dynamic> updates,
+) async {
+  try {
+    print("🔄 Modification de la leçon: $lessonId");
+    print("📝 Champs à modifier: ${updates.keys.toList()}");
+
+    final lessonRef = FirebaseFirestore.instance
+        .collection('lessons')
+        .doc(lessonId);
+
+    // Vérifier que la leçon existe
+    final lessonDoc = await lessonRef.get();
+    if (!lessonDoc.exists) {
+      print("❌ La leçon '$lessonId' n'existe pas dans Firestore");
+      return;
+    }
+
+    // Mettre à jour uniquement les champs spécifiés
+    await lessonRef.update(updates);
+
+    print("✅ Leçon '$lessonId' modifiée avec succès!");
+    print("   Champs modifiés: ${updates.keys.join(", ")}");
+  } catch (e) {
+    print("❌ Erreur lors de la modification de la leçon '$lessonId': $e");
+  }
+}
 
 Future<void> verifierLecons() async {
   try {
@@ -183,6 +224,7 @@ Future<void> verifierLecons() async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Modifier la leçon
 
   // Ajouter la nouvelle leçon
   //await verifierLecons();
@@ -213,7 +255,7 @@ class CoranLinguaApp extends StatelessWidget {
             builder: (context, snapshot) {
               return MaterialApp(
                 title: 'CoranLingua',
-                themeMode: themeProvider.themeMode,
+                themeMode: ThemeMode.dark, // Forcer le dark mode
                 theme: buildLightTheme(),
                 darkTheme: buildDarkTheme(),
                 // Configuration de l'internationalisation
@@ -260,13 +302,13 @@ class CoranLinguaApp extends StatelessWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: colorScheme.onBackground,
         elevation: 0,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: FontHelper.poppins(
           color: colorScheme.onBackground,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
       ),
-      textTheme: GoogleFonts.poppinsTextTheme(base.textTheme).apply(
+      textTheme: FontHelper.poppinsTextTheme(base.textTheme).apply(
         bodyColor: colorScheme.onBackground,
         displayColor: colorScheme.onBackground,
       ),
@@ -283,7 +325,7 @@ class CoranLinguaApp extends StatelessWidget {
           backgroundColor: colorScheme.primary,
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-          textStyle: GoogleFonts.poppins(
+          textStyle: FontHelper.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -315,13 +357,13 @@ class CoranLinguaApp extends StatelessWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: colorScheme.onBackground,
         elevation: 0,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: FontHelper.poppins(
           color: colorScheme.onBackground,
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
       ),
-      textTheme: GoogleFonts.poppinsTextTheme(base.textTheme).apply(
+      textTheme: FontHelper.poppinsTextTheme(base.textTheme).apply(
         bodyColor: colorScheme.onBackground,
         displayColor: colorScheme.onBackground,
       ),
@@ -338,7 +380,7 @@ class CoranLinguaApp extends StatelessWidget {
           backgroundColor: colorScheme.primary,
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-          textStyle: GoogleFonts.poppins(
+          textStyle: FontHelper.poppins(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -366,6 +408,7 @@ class _InitialScreenState extends State<InitialScreen> {
   @override
   void initState() {
     super.initState();
+
     _checkInitialState();
   }
 
@@ -1337,97 +1380,7 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Streak avec animation
-              AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: 1.0 + (0.1 * _pulseController.value),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.orange.withOpacity(0.8),
-                            Colors.red.withOpacity(0.6),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(25),
-                        border: Border.all(
-                          color: Colors.orange.withOpacity(0.8),
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.orange.withOpacity(0.4),
-                            blurRadius: 15,
-                            offset: Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.local_fire_department,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              '5 jours',
-                              style: GoogleFonts.poppins(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // Lives avec animation
-              Row(
-                children: List.generate(
-                  3,
-                  (index) => AnimatedBuilder(
-                    animation: _floatingController,
-                    builder: (context, child) {
-                      final offset =
-                          math.sin(
-                            (_floatingController.value * 2 * math.pi) +
-                                (index * 0.5),
-                          ) *
-                          3;
-                      return Transform.translate(
-                        offset: Offset(0, offset),
-                        child: Container(
-                          margin: EdgeInsets.only(left: 4),
-                          child: Icon(
-                            Icons.favorite,
-                            color: Colors.red,
-                            size: 24,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
+          // Header sans streak et sans cœurs
           SizedBox(height: 12),
           // Widget de pourcentage d'apprentissage (discret)
           _buildLearningPercentageWidget(),

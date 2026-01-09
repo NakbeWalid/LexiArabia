@@ -5,11 +5,11 @@
             "queryScope": "COLLECTION",
             "fields": [
                 {
-                    "fieldPath": "dueDate",
+                    "fieldPath": "status",
                     "order": "ASCENDING"
                 },
                 {
-                    "fieldPath": "status",
+                    "fieldPath": "dueDate",
                     "order": "ASCENDING"
                 }
             ]
