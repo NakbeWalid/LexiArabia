@@ -158,56 +158,6 @@ class _ProfilScreenState extends State<ProfilScreen>
                       ),
                     ),
                     Spacer(),
-                    Consumer<AuthService>(
-                      builder: (context, authService, child) {
-                        return PopupMenuButton<String>(
-                          icon: Icon(Icons.more_vert, color: Colors.white),
-                          onSelected: (value) async {
-                            if (value == 'logout') {
-                              final shouldLogout = await showDialog<bool>(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: Text('Se déconnecter'),
-                                  content: Text(
-                                    'Êtes-vous sûr de vouloir vous déconnecter ?',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: Text('Annuler'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: Text(
-                                        'Se déconnecter',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (shouldLogout == true) {
-                                await authService.signOut();
-                              }
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'logout',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.logout, color: Colors.red),
-                                  SizedBox(width: 8),
-                                  Text('Se déconnecter'),
-                                ],
-                              ),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),
@@ -249,8 +199,6 @@ class _ProfilScreenState extends State<ProfilScreen>
                       _buildAchievementsSection(achievements),
                       SizedBox(height: 40),
 
-                      // Action Buttons
-                      _buildActionButtons(),
                       SizedBox(height: 40),
                     ],
                   ),
@@ -667,72 +615,6 @@ class _ProfilScreenState extends State<ProfilScreen>
     );
   }
 
-  Widget _buildActionButtons() {
-    return Column(
-      children: [
-        // Settings button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              HapticFeedback.selectionClick();
-              // TODO: Implement settings
-            },
-            icon: Icon(Icons.settings, color: Colors.white),
-            label: Text(
-              'Settings',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-                side: BorderSide(color: Colors.white.withOpacity(0.3)),
-              ),
-              elevation: 0,
-            ),
-          ),
-        ),
-
-        SizedBox(height: 16),
-
-        // Logout button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              _showLogoutDialog();
-            },
-            icon: Icon(Icons.logout, color: Colors.white),
-            label: Text(
-              'Logout',
-              style: GoogleFonts.poppins(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              elevation: 8,
-              shadowColor: Colors.red.withOpacity(0.3),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   List<Map<String, dynamic>> _getRealAchievements(userModel) {
     if (userModel == null) return [];
 
@@ -815,91 +697,5 @@ class _ProfilScreenState extends State<ProfilScreen>
     }
 
     return realAchievements;
-  }
-
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF667eea), Color(0xFF764ba2)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 20,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.logout, size: 60, color: Colors.white),
-              SizedBox(height: 16),
-              Text(
-                "Logout",
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                "Are you sure you want to logout?",
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: Colors.white.withOpacity(0.9),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        "Cancel",
-                        style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        // TODO: Implement actual logout
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Color(0xFF667eea),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        "Logout",
-                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

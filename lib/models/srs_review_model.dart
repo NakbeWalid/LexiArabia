@@ -1,27 +1,37 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modèle pour une révision SRS
+/// Modèle pour une révision avec l'algorithme FSRS
+///
+/// Enregistre l'historique complet d'une révision, incluant tous les paramètres FSRS
+/// avant et après la révision pour permettre l'analyse et le débogage.
 class SRSReview {
   final String reviewId;
   final String exerciseId;
   final String lessonId;
-  
+
   // Données de la révision
-  final int quality; // 0=AGAIN, 1=HARD, 2=GOOD, 3=EASY
-  final String qualityLabel; // "AGAIN", "HARD", "GOOD", "EASY"
+  final int quality; // 1=HARD, 2=GOOD, 3=EASY (0=AGAIN non utilisé)
+  final String qualityLabel; // "HARD", "GOOD", "EASY"
   final int? responseTime; // Temps de réponse en secondes (optionnel)
   final DateTime reviewedAt;
-  
-  // État avant/après (pour debug et analyse)
+
+  // État FSRS avant/après (pour debug et analyse)
   final double intervalBefore;
   final double intervalAfter;
-  final double easeFactorBefore;
-  final double easeFactorAfter;
-  final int repetitionsBefore;
-  final int repetitionsAfter;
-  
+  final double stabilityBefore; // Stabilité FSRS avant la révision
+  final double stabilityAfter; // Stabilité FSRS après la révision
+  final double difficultyBefore; // Difficulté FSRS avant la révision
+  final double difficultyAfter; // Difficulté FSRS après la révision
+  final int
+  stateBefore; // État FSRS avant (0=New, 1=Learning, 2=Review, 3=Relearning)
+  final int stateAfter; // État FSRS après
+  final int lapsesBefore; // Nombre d'échecs avant
+  final int lapsesAfter; // Nombre d'échecs après
+
   // Résultat
-  final bool wasCorrect; // true si GOOD ou EASY, false si AGAIN
+  // Dans cette app, on ne passe à l'exercice suivant qu'une fois réussi.
+  // Donc une review enregistrée correspond à une réussite (HARD/GOOD/EASY).
+  final bool wasCorrect;
 
   SRSReview({
     required this.reviewId,
@@ -33,10 +43,14 @@ class SRSReview {
     required this.reviewedAt,
     required this.intervalBefore,
     required this.intervalAfter,
-    required this.easeFactorBefore,
-    required this.easeFactorAfter,
-    required this.repetitionsBefore,
-    required this.repetitionsAfter,
+    required this.stabilityBefore,
+    required this.stabilityAfter,
+    required this.difficultyBefore,
+    required this.difficultyAfter,
+    required this.stateBefore,
+    required this.stateAfter,
+    required this.lapsesBefore,
+    required this.lapsesAfter,
     required this.wasCorrect,
   });
 
@@ -54,7 +68,7 @@ class SRSReview {
     }
 
     return SRSReview(
-      reviewId: data['reviewId'] ?? '',
+      reviewId: data['reviewId'] as String? ?? '',
       exerciseId: data['exerciseId'] ?? '',
       lessonId: data['lessonId'] ?? '',
       quality: data['quality'] ?? 2,
@@ -63,10 +77,19 @@ class SRSReview {
       reviewedAt: parseTimestamp(data['reviewedAt']),
       intervalBefore: (data['intervalBefore'] ?? 0.0).toDouble(),
       intervalAfter: (data['intervalAfter'] ?? 0.0).toDouble(),
-      easeFactorBefore: (data['easeFactorBefore'] ?? 2.5).toDouble(),
-      easeFactorAfter: (data['easeFactorAfter'] ?? 2.5).toDouble(),
-      repetitionsBefore: data['repetitionsBefore'] ?? 0,
-      repetitionsAfter: data['repetitionsAfter'] ?? 0,
+      // FSRS fields - compatibilité avec anciennes données (easeFactorBefore/After stockait stability)
+      stabilityBefore:
+          (data['stabilityBefore'] ?? data['easeFactorBefore'] ?? 0.4)
+              .toDouble(),
+      stabilityAfter: (data['stabilityAfter'] ?? data['easeFactorAfter'] ?? 0.4)
+          .toDouble(),
+      difficultyBefore: (data['difficultyBefore'] ?? 5.0).toDouble(),
+      difficultyAfter: (data['difficultyAfter'] ?? 5.0).toDouble(),
+      // stateBefore/After - compatibilité avec anciennes données (repetitionsBefore/After stockait state)
+      stateBefore: data['stateBefore'] ?? data['repetitionsBefore'] ?? 0,
+      stateAfter: data['stateAfter'] ?? data['repetitionsAfter'] ?? 0,
+      lapsesBefore: data['lapsesBefore'] ?? 0,
+      lapsesAfter: data['lapsesAfter'] ?? 0,
       wasCorrect: data['wasCorrect'] ?? true,
     );
   }
@@ -83,10 +106,15 @@ class SRSReview {
       'reviewedAt': Timestamp.fromDate(reviewedAt),
       'intervalBefore': intervalBefore,
       'intervalAfter': intervalAfter,
-      'easeFactorBefore': easeFactorBefore,
-      'easeFactorAfter': easeFactorAfter,
-      'repetitionsBefore': repetitionsBefore,
-      'repetitionsAfter': repetitionsAfter,
+      // FSRS fields
+      'stabilityBefore': stabilityBefore,
+      'stabilityAfter': stabilityAfter,
+      'difficultyBefore': difficultyBefore,
+      'difficultyAfter': difficultyAfter,
+      'stateBefore': stateBefore,
+      'stateAfter': stateAfter,
+      'lapsesBefore': lapsesBefore,
+      'lapsesAfter': lapsesAfter,
       'wasCorrect': wasCorrect,
     };
   }
@@ -94,8 +122,6 @@ class SRSReview {
   /// Obtenir le label de qualité depuis un entier
   static String getQualityLabel(int quality) {
     switch (quality) {
-      case 0:
-        return 'AGAIN';
       case 1:
         return 'HARD';
       case 2:
@@ -103,8 +129,7 @@ class SRSReview {
       case 3:
         return 'EASY';
       default:
-        return 'GOOD';
+        return 'HARD';
     }
   }
 }
-

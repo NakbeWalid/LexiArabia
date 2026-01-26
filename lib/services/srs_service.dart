@@ -1,14 +1,66 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dualingocoran/models/srs_exercise_model.dart';
-import 'package:dualingocoran/models/srs_review_model.dart';
 import 'package:dualingocoran/models/srs_settings_model.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:dualingocoran/services/fsrs_algorithm.dart';
 import 'srs_database_init.dart';
+import 'dart:math' as math;
 
 /// Service pour gérer le système SRS (Spaced Repetition System)
-/// Implémente l'algorithme SM-2 (comme Anki)
+/// Implémente l'algorithme FSRS (Free Spaced Repetition Scheduler)
 class SRSService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  /// Politique "Duolingo-like":
+  /// - Toujours prioriser les révisions dues (fragiles / oubliées)
+  /// - Réduire fortement les "new" quand il y a beaucoup de due
+  ///
+  /// Règles (avec cap journalier typique 15):
+  /// - Si due >= cap-3  (ex: 12/15) → 0 new
+  /// - Si due >= cap-7  (ex: 8/15)  → 1 new max
+  /// - Sinon → jusqu'à newExercisesPerDay
+  static int computeDailyNewLimit({
+    required SRSSettings settings,
+    required int dueSelectedCount,
+  }) {
+    final cap = settings.maxReviewsPerDay.clamp(1, 50);
+    final baseNew = settings.newExercisesPerDay.clamp(0, 50);
+
+    final remainingSlots = math.max(0, cap - dueSelectedCount);
+    if (remainingSlots == 0 || baseNew == 0) return 0;
+
+    // Beaucoup de retard → on coupe les new pour rattraper
+    if (dueSelectedCount >= cap - 3) return 0;
+
+    // Retard significatif → on garde 1 new max pour continuer à avancer
+    if (dueSelectedCount >= cap - 7) {
+      return math.min(1, math.min(baseNew, remainingSlots));
+    }
+
+    // Sinon, on autorise le quota normal de new (dans la limite des slots restants)
+    return math.min(baseNew, remainingSlots);
+  }
+
+  // Priorité "le plus ancien / oublié" (heuristique légère côté client)
+  // - Plus un exercice est en retard (overdue), plus il est prioritaire
+  // - Plus il a de lapses, plus il est prioritaire
+  // - Plus sa stabilité est faible, plus il est fragile → prioritaire
+  // - Plus sa difficulté est haute, plus il est prioritaire
+  static double _priorityScore(SRSExercise ex, DateTime now) {
+    final overdueHours = math.max(0, now.difference(ex.dueDate).inHours);
+    final overdueDays = overdueHours / 24.0;
+    final stability = ex.stability <= 0 ? 0.1 : ex.stability;
+
+    final overdueComponent = overdueDays * 100.0;
+    final lapsesComponent = ex.lapses * 40.0;
+    final fragilityComponent = (1.0 / (stability + 0.5)) * 20.0;
+    final difficultyComponent = ex.difficulty * 2.0;
+
+    return overdueComponent +
+        lapsesComponent +
+        fragilityComponent +
+        difficultyComponent;
+  }
 
   /// Obtenir les paramètres SRS d'un utilisateur
   static Future<SRSSettings> getSettings(String userId) async {
@@ -33,7 +85,8 @@ class SRSService {
           '${lessonId}_${exerciseIndex}_${DateTime.now().millisecondsSinceEpoch}';
 
       final now = DateTime.now();
-      final settings = await getSettings(userId);
+      // Note: getSettings() initialise les paramètres par défaut si nécessaire
+      await getSettings(userId);
 
       // Créer l'exercice SRS avec statut "new"
       // IMPORTANT: Utiliser rawData si disponible pour préserver les traductions
@@ -67,15 +120,19 @@ class SRSService {
         };
       }
 
+      // Initialiser avec FSRS (nouvelle carte)
       final srsExercise = SRSExercise(
         exerciseId: exerciseId,
         lessonId: lessonId,
         exerciseIndex: exerciseIndex,
         exerciseType: exercise.type,
-        interval: 0.0, // Nouveau, pas encore révisé
-        easeFactor: settings.defaultEaseFactor,
-        repetitions: 0,
+        interval: 0.0, // Sera calculé par FSRS
+        stability: 0.4, // Stabilité initiale FSRS
+        difficulty: 5.0, // Difficulté initiale FSRS (milieu de l'échelle 0-10)
+        state: 0, // NEW
+        lapses: 0,
         dueDate: now, // À réviser immédiatement
+        elapsedDays: 0,
         status: 'new',
         lastReviewed: null,
         createdAt: now,
@@ -104,10 +161,17 @@ class SRSService {
   }
 
   /// Obtenir les exercices à réviser aujourd'hui
-  static Future<List<SRSExercise>> getDueExercises(String userId) async {
+  static Future<List<SRSExercise>> getDueExercises(
+    String userId, {
+    bool smoothBacklog = false,
+  }) async {
     try {
       final now = DateTime.now();
       final settings = await getSettings(userId);
+
+      // Limite stricte côté app (sécurité)
+      final dailyCap = settings.maxReviewsPerDay.clamp(1, 50);
+      final overfetch = (dailyCap * 4).clamp(dailyCap, 200);
 
       // Récupérer les exercices dont la date de révision est passée
       final snapshot = await _firestore
@@ -115,14 +179,62 @@ class SRSService {
           .doc(userId)
           .collection('srsExercises')
           .where('dueDate', isLessThanOrEqualTo: Timestamp.fromDate(now))
-          .where('status', whereIn: ['new', 'learning', 'review'])
+          // Les "new" sont gérés séparément via getNewExercises
+          .where('status', whereIn: ['learning', 'review'])
           .orderBy('dueDate', descending: false)
-          .limit(settings.maxReviewsPerDay)
+          .limit(overfetch)
           .get();
 
-      return snapshot.docs
+      final fetched = snapshot.docs
           .map((doc) => SRSExercise.fromMap(doc.data()))
           .toList();
+
+      if (fetched.isEmpty) return [];
+
+      // Priorisation: sélectionner les plus "urgents / oubliés" parmi un sur-échantillon
+      fetched.sort((a, b) {
+        final sb = _priorityScore(b, now);
+        final sa = _priorityScore(a, now);
+        final byScore = sb.compareTo(sa);
+        if (byScore != 0) return byScore;
+        return a.dueDate.compareTo(b.dueDate);
+      });
+
+      final selected = fetched.take(dailyCap).toList();
+
+      // Répartition après absence: décaler les items non sélectionnés sur les jours suivants
+      // (on ne touche qu'au sur-échantillon pour limiter les writes)
+      if (smoothBacklog && fetched.length > dailyCap) {
+        final remaining = fetched.sublist(dailyCap);
+        final spreadDays = math.min(
+          7,
+          (remaining.length / dailyCap).ceil().clamp(1, 7),
+        );
+
+        final batch = _firestore.batch();
+        for (int i = 0; i < remaining.length; i++) {
+          final ex = remaining[i];
+          final deferByDays = 1 + (i % spreadDays);
+          final newDue = DateTime(now.year, now.month, now.day).add(
+            Duration(days: deferByDays, hours: 12),
+          ); // demain midi, puis +n jours
+
+          final ref = _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('srsExercises')
+              .doc(ex.exerciseId);
+
+          batch.update(ref, {
+            'dueDate': Timestamp.fromDate(newDue),
+            'deferredAt': FieldValue.serverTimestamp(),
+            'deferredReason': 'backlog_smoothing',
+          });
+        }
+        await batch.commit();
+      }
+
+      return selected;
     } catch (e) {
       print('❌ Erreur lors de la récupération des exercices à réviser: $e');
       return [];
@@ -130,9 +242,25 @@ class SRSService {
   }
 
   /// Obtenir les nouveaux exercices à réviser
-  static Future<List<SRSExercise>> getNewExercises(String userId) async {
+  static Future<List<SRSExercise>> getNewExercises(
+    String userId, {
+    int? limitOverride,
+    bool allowExceedDailyNewLimit = false,
+  }) async {
     try {
       final settings = await getSettings(userId);
+
+      // Par défaut, même si un appelant passe un limitOverride (ex: remainingSlots),
+      // on ne dépasse pas la limite quotidienne "newExercisesPerDay".
+      final rawRequested = (limitOverride ?? settings.newExercisesPerDay).clamp(
+        0,
+        50,
+      );
+      final limit = allowExceedDailyNewLimit
+          ? rawRequested
+          : math.min(rawRequested, settings.newExercisesPerDay.clamp(0, 50));
+
+      if (limit == 0) return [];
 
       final snapshot = await _firestore
           .collection('users')
@@ -140,7 +268,7 @@ class SRSService {
           .collection('srsExercises')
           .where('status', isEqualTo: 'new')
           .orderBy('createdAt', descending: false)
-          .limit(settings.newExercisesPerDay)
+          .limit(limit)
           .get();
 
       return snapshot.docs
@@ -152,16 +280,19 @@ class SRSService {
     }
   }
 
-  /// Enregistrer une révision et mettre à jour l'exercice avec l'algorithme SM-2
+  /// Enregistrer une révision et mettre à jour l'exercice avec l'algorithme FSRS
   static Future<void> recordReview({
     required String userId,
     required String exerciseId,
-    required int quality, // 0=AGAIN, 1=HARD, 2=GOOD, 3=EASY
+    required int quality, // 1=HARD, 2=GOOD, 3=EASY (0=AGAIN n'est plus utilisé)
     int? responseTime,
   }) async {
     try {
       final settings = await getSettings(userId);
-      final qualityLabel = SRSReview.getQualityLabel(quality);
+
+      // Sécurité: dans ce projet, on ne veut plus de quality=0 (AGAIN).
+      // On clamp systématiquement à 1..3 pour éviter des données incohérentes.
+      final clampedQuality = quality.clamp(1, 3);
 
       // Récupérer l'exercice actuel
       final exerciseDoc = await _firestore
@@ -177,84 +308,61 @@ class SRSService {
 
       final currentExercise = SRSExercise.fromMap(exerciseDoc.data()!);
 
-      // Sauvegarder l'état avant
+      // Sauvegarder les valeurs avant pour les logs
       final intervalBefore = currentExercise.interval;
-      final easeFactorBefore = currentExercise.easeFactor;
-      final repetitionsBefore = currentExercise.repetitions;
+      final stabilityBefore = currentExercise.stability;
+      final difficultyBefore = currentExercise.difficulty;
+      final stateBefore = currentExercise.state;
 
-      // Calculer le nouvel état avec l'algorithme SM-2
-      final updatedExercise = _calculateSM2(
+      // Calculer le nouvel état avec l'algorithme FSRS
+      final updatedExercise = _calculateFSRS(
         currentExercise: currentExercise,
-        quality: quality,
+        quality: clampedQuality,
         settings: settings,
-      );
-
-      // Créer l'enregistrement de révision
-      final reviewId = '${exerciseId}_${DateTime.now().millisecondsSinceEpoch}';
-      final review = SRSReview(
-        reviewId: reviewId,
-        exerciseId: exerciseId,
-        lessonId: currentExercise.lessonId,
-        quality: quality,
-        qualityLabel: qualityLabel,
         responseTime: responseTime,
-        reviewedAt: DateTime.now(),
-        intervalBefore: intervalBefore,
-        intervalAfter: updatedExercise.interval,
-        easeFactorBefore: easeFactorBefore,
-        easeFactorAfter: updatedExercise.easeFactor,
-        repetitionsBefore: repetitionsBefore,
-        repetitionsAfter: updatedExercise.repetitions,
-        wasCorrect: quality >= 2, // GOOD ou EASY = correct
       );
 
-      // Mettre à jour les statistiques
+      // Mettre à jour les statistiques (agrégées dans l'exercice)
       final updatedStats = updatedExercise.copyWith(
         totalReviews: currentExercise.totalReviews + 1,
-        correctReviews: quality >= 2
+        correctReviews: clampedQuality >= 2
             ? currentExercise.correctReviews + 1
             : currentExercise.correctReviews,
-        incorrectReviews: quality == 0
+        // "incorrectReviews" était basé sur AGAIN(0). Comme on ne génère plus 0,
+        // ce compteur n'augmente plus via recordReview.
+        incorrectReviews: clampedQuality == 0
             ? currentExercise.incorrectReviews + 1
             : currentExercise.incorrectReviews,
-        hardReviews: quality == 1
+        hardReviews: clampedQuality == 1
             ? currentExercise.hardReviews + 1
             : currentExercise.hardReviews,
-        lastQuality: quality,
+        lastQuality: clampedQuality,
         lastReviewed: DateTime.now(),
+        elapsedDays: 0, // Réinitialiser après révision
       );
 
-      // Sauvegarder dans Firestore (transaction pour garantir la cohérence)
-      final batch = _firestore.batch();
+      // Sauvegarder dans Firestore
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('srsExercises')
+          .doc(exerciseId)
+          .update(updatedStats.toMap());
 
-      // Mettre à jour l'exercice
-      batch.update(
-        _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('srsExercises')
-            .doc(exerciseId),
-        updatedStats.toMap(),
-      );
-
-      // Créer l'enregistrement de révision
-      batch.set(
-        _firestore
-            .collection('users')
-            .doc(userId)
-            .collection('srsReviews')
-            .doc(reviewId),
-        review.toMap(),
-      );
-
-      await batch.commit();
-
-      print('✅ Révision enregistrée: $qualityLabel pour $exerciseId');
+      // Obtenir le label de qualité pour le log
+      final qualityLabel = _getQualityLabel(clampedQuality);
+      print('✅ Révision FSRS enregistrée: $qualityLabel pour $exerciseId');
       print(
         '   Intervalle: ${intervalBefore.toStringAsFixed(1)} → ${updatedExercise.interval.toStringAsFixed(1)} jours',
       );
       print(
-        '   Facilité: ${easeFactorBefore.toStringAsFixed(2)} → ${updatedExercise.easeFactor.toStringAsFixed(2)}',
+        '   Stabilité: ${stabilityBefore.toStringAsFixed(2)} → ${updatedExercise.stability.toStringAsFixed(2)} jours',
+      );
+      print(
+        '   Difficulté: ${difficultyBefore.toStringAsFixed(2)} → ${updatedExercise.difficulty.toStringAsFixed(2)}',
+      );
+      print(
+        '   État: $stateBefore → ${updatedExercise.state} (${updatedExercise.status})',
       );
     } catch (e) {
       print('❌ Erreur lors de l\'enregistrement de la révision: $e');
@@ -262,100 +370,31 @@ class SRSService {
     }
   }
 
-  /// Calculer le nouvel état avec l'algorithme SM-2
-  static SRSExercise _calculateSM2({
+  /// Calculer le nouvel état avec l'algorithme FSRS
+  static SRSExercise _calculateFSRS({
     required SRSExercise currentExercise,
     required int quality,
     required SRSSettings settings,
+    int? responseTime,
   }) {
-    double newInterval = currentExercise.interval;
-    double newEaseFactor = currentExercise.easeFactor;
-    int newRepetitions = currentExercise.repetitions;
-    String newStatus = currentExercise.status;
-    DateTime newDueDate = currentExercise.dueDate;
-
-    // Obtenir l'intervalle initial pour cette qualité
-    final qualityLabel = SRSReview.getQualityLabel(quality);
-    final initialIntervalForQuality =
-        settings.initialIntervals[qualityLabel] ?? 1.0;
-
-    if (quality == 0) {
-      // AGAIN - Recommencer
-      newInterval = initialIntervalForQuality;
-      newRepetitions = 0;
-      newStatus = 'learning';
-      // Réduire le facteur de facilité
-      newEaseFactor = (newEaseFactor + settings.easeFactorChange['AGAIN']!)
-          .clamp(settings.easeFactorMin, settings.easeFactorMax);
-    } else if (quality == 1) {
-      // HARD
-      if (currentExercise.repetitions == 0) {
-        newInterval = initialIntervalForQuality;
-      } else {
-        newInterval = (currentExercise.interval * 1.2).clamp(
-          settings.minimumInterval,
-          settings.maximumInterval,
-        );
-      }
-      newRepetitions = currentExercise.repetitions;
-      newStatus = currentExercise.repetitions == 0 ? 'learning' : 'review';
-      // Réduire légèrement le facteur de facilité
-      newEaseFactor = (newEaseFactor + settings.easeFactorChange['HARD']!)
-          .clamp(settings.easeFactorMin, settings.easeFactorMax);
-    } else if (quality == 2) {
-      // GOOD
-      if (currentExercise.repetitions == 0) {
-        newInterval = initialIntervalForQuality;
-        newRepetitions = 1;
-        newStatus = 'learning';
-      } else if (currentExercise.repetitions == 1) {
-        newInterval = 6.0;
-        newRepetitions = 2;
-        newStatus = 'review';
-      } else {
-        newInterval = (currentExercise.interval * newEaseFactor).clamp(
-          settings.minimumInterval,
-          settings.maximumInterval,
-        );
-        newRepetitions = currentExercise.repetitions + 1;
-        newStatus = 'review';
-      }
-      // Pas de changement du facteur de facilité pour GOOD
-    } else if (quality == 3) {
-      // EASY
-      if (currentExercise.repetitions == 0) {
-        newInterval = initialIntervalForQuality * settings.easyBonus;
-        newRepetitions = 1;
-        newStatus = 'review';
-      } else {
-        newInterval =
-            (currentExercise.interval * newEaseFactor * settings.easyBonus)
-                .clamp(settings.minimumInterval, settings.maximumInterval);
-        newRepetitions = currentExercise.repetitions + 1;
-        newStatus = 'review';
-      }
-      // Augmenter légèrement le facteur de facilité
-      newEaseFactor = (newEaseFactor + settings.easeFactorChange['EASY']!)
-          .clamp(settings.easeFactorMin, settings.easeFactorMax);
+    // Calculer elapsedDays depuis la dernière révision
+    int elapsedDays = currentExercise.elapsedDays;
+    if (elapsedDays == 0 && currentExercise.lastReviewed != null) {
+      elapsedDays = DateTime.now()
+          .difference(currentExercise.lastReviewed!)
+          .inDays;
+    } else if (elapsedDays == 0 && currentExercise.lastReviewed == null) {
+      // Pour une nouvelle carte, calculer depuis la création
+      elapsedDays = DateTime.now().difference(currentExercise.createdAt).inDays;
     }
+    elapsedDays = elapsedDays.clamp(0, 365); // Limiter à 1 an max
 
-    // Appliquer le modificateur d'intervalle global
-    newInterval = newInterval * settings.intervalModifier;
-
-    // Calculer la nouvelle date de révision
-    newDueDate = DateTime.now().add(Duration(days: newInterval.round()));
-
-    // Mettre à jour le statut si maîtrisé
-    if (newInterval > 30 && newStatus == 'review') {
-      newStatus = 'mastered';
-    }
-
-    return currentExercise.copyWith(
-      interval: newInterval,
-      easeFactor: newEaseFactor,
-      repetitions: newRepetitions,
-      dueDate: newDueDate,
-      status: newStatus,
+    // Utiliser FSRS Algorithm
+    return FSRSAlgorithm.calculateNext(
+      current: currentExercise,
+      quality: quality,
+      params: settings.fsrsParams,
+      elapsedDays: elapsedDays,
     );
   }
 
@@ -368,12 +407,6 @@ class SRSService {
           .collection('srsExercises')
           .get();
 
-      final reviewsSnapshot = await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('srsReviews')
-          .get();
-
       final exercises = exercisesSnapshot.docs
           .map((doc) => SRSExercise.fromMap(doc.data()))
           .toList();
@@ -382,12 +415,18 @@ class SRSService {
       final newExercises = exercises.where((e) => e.status == 'new').length;
       final masteredExercises = exercises.where((e) => e.isMastered).length;
 
+      // Calculer le total des révisions depuis les statistiques agrégées
+      final totalReviews = exercises.fold<int>(
+        0,
+        (sum, exercise) => sum + exercise.totalReviews,
+      );
+
       return {
         'totalExercises': exercises.length,
         'dueExercises': dueExercises,
         'newExercises': newExercises,
         'masteredExercises': masteredExercises,
-        'totalReviews': reviewsSnapshot.docs.length,
+        'totalReviews': totalReviews,
       };
     } catch (e) {
       print('❌ Erreur lors de la récupération des statistiques: $e');
@@ -411,6 +450,20 @@ class SRSService {
     } catch (e) {
       print('❌ Erreur lors de la suppression: $e');
       rethrow;
+    }
+  }
+
+  /// Obtenir le label de qualité depuis un entier
+  static String _getQualityLabel(int quality) {
+    switch (quality) {
+      case 1:
+        return 'HARD';
+      case 2:
+        return 'GOOD';
+      case 3:
+        return 'EASY';
+      default:
+        return 'HARD';
     }
   }
 }

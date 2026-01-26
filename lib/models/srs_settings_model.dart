@@ -1,157 +1,111 @@
-/// Modèle pour les paramètres SRS d'un utilisateur
+/// Modèle pour les paramètres FSRS d'un utilisateur
+///
+/// Utilise l'algorithme FSRS (Free Spaced Repetition Scheduler), un algorithme moderne
+/// de répétition espacée basé sur l'apprentissage automatique.
+///
+/// Les paramètres incluent :
+/// - fsrsParams : 17 paramètres optimisés par machine learning
+/// - requestRetention : Taux de rétention cible (par défaut 0.9 = 90%)
+/// - Limites quotidiennes pour nouveaux exercices et révisions
 class SRSSettings {
-  final String algorithm;
-  
-  // Paramètres SM-2
-  final double initialInterval;
-  final double minimumInterval;
-  final double maximumInterval;
-  final double easyBonus;
-  final double intervalModifier;
-  
-  // Intervalles initiaux pour chaque qualité (en jours)
-  final Map<String, double> initialIntervals;
-  
+  // Paramètres FSRS
+  final List<double> fsrsParams; // 17 paramètres optimisés FSRS
+  final double requestRetention; // Taux de rétention cible (0.9 = 90%)
+
   // Limites quotidiennes
   final int newExercisesPerDay;
   final int maxReviewsPerDay;
-  
-  // Modificateurs de facilité
-  final double easeFactorMin;
-  final double easeFactorMax;
-  final Map<String, double> easeFactorChange;
-  
-  // Facteur de facilité initial
-  final double defaultEaseFactor;
 
   SRSSettings({
-    required this.algorithm,
-    required this.initialInterval,
-    required this.minimumInterval,
-    required this.maximumInterval,
-    required this.easyBonus,
-    required this.intervalModifier,
-    required this.initialIntervals,
+    required this.fsrsParams,
+    required this.requestRetention,
     required this.newExercisesPerDay,
     required this.maxReviewsPerDay,
-    required this.easeFactorMin,
-    required this.easeFactorMax,
-    required this.easeFactorChange,
-    required this.defaultEaseFactor,
   });
 
   /// Créer SRSSettings depuis les données Firestore
   factory SRSSettings.fromMap(Map<String, dynamic> data) {
+    // Paramètres FSRS
+    List<double> fsrsParams = [];
+    if (data['fsrsParams'] != null && data['fsrsParams'] is List) {
+      fsrsParams = (data['fsrsParams'] as List)
+          .map((e) => (e as num).toDouble())
+          .toList();
+    } else {
+      // Utiliser les paramètres par défaut FSRS
+      fsrsParams = _getDefaultFSRSParams();
+    }
+
+    final requestRetention = (data['requestRetention'] ?? 0.9).toDouble();
+
     return SRSSettings(
-      algorithm: data['algorithm'] ?? 'sm2',
-      initialInterval: (data['initialInterval'] ?? 1.0).toDouble(),
-      minimumInterval: (data['minimumInterval'] ?? 1.0).toDouble(),
-      maximumInterval: (data['maximumInterval'] ?? 36500.0).toDouble(),
-      easyBonus: (data['easyBonus'] ?? 1.3).toDouble(),
-      intervalModifier: (data['intervalModifier'] ?? 1.0).toDouble(),
-      initialIntervals: Map<String, double>.from(
-        data['initialIntervals'] ?? {
-          'AGAIN': 0.0,
-          'HARD': 0.5,
-          'GOOD': 1.0,
-          'EASY': 4.0,
-        },
-      ),
-      newExercisesPerDay: data['newExercisesPerDay'] ?? 20,
-      maxReviewsPerDay: data['maxReviewsPerDay'] ?? 200,
-      easeFactorMin: (data['easeFactorMin'] ?? 1.3).toDouble(),
-      easeFactorMax: (data['easeFactorMax'] ?? 2.5).toDouble(),
-      easeFactorChange: Map<String, double>.from(
-        data['easeFactorChange'] ?? {
-          'AGAIN': -0.2,
-          'HARD': -0.15,
-          'GOOD': 0.0,
-          'EASY': 0.15,
-        },
-      ),
-      defaultEaseFactor: (data['defaultEaseFactor'] ?? 2.5).toDouble(),
+      fsrsParams: fsrsParams,
+      requestRetention: requestRetention,
+      // Par défaut, on limite pour éviter une avalanche après une absence.
+      // Les nouveaux items SRS (status 'new') sont volontairement bas.
+      newExercisesPerDay: data['newExercisesPerDay'] ?? 5,
+      // Limite stricte: 10–15 révisions/jour (on choisit 15 par défaut)
+      maxReviewsPerDay: data['maxReviewsPerDay'] ?? 15,
     );
+  }
+
+  /// Obtenir les paramètres FSRS par défaut
+  static List<double> _getDefaultFSRSParams() {
+    // Paramètres FSRS optimisés par défaut
+    return [
+      0.4,
+      1.6,
+      10.0,
+      5.8,
+      4.93,
+      0.94,
+      0.86,
+      0.01,
+      1.49,
+      0.14,
+      0.94,
+      2.18,
+      0.05,
+      0.34,
+      1.26,
+      0.29,
+      2.61,
+    ];
   }
 
   /// Convertir en Map pour Firestore
   Map<String, dynamic> toMap() {
     return {
-      'algorithm': algorithm,
-      'initialInterval': initialInterval,
-      'minimumInterval': minimumInterval,
-      'maximumInterval': maximumInterval,
-      'easyBonus': easyBonus,
-      'intervalModifier': intervalModifier,
-      'initialIntervals': initialIntervals,
+      'algorithm': 'fsrs', // Toujours FSRS maintenant
+      'fsrsParams': fsrsParams,
+      'requestRetention': requestRetention,
       'newExercisesPerDay': newExercisesPerDay,
       'maxReviewsPerDay': maxReviewsPerDay,
-      'easeFactorMin': easeFactorMin,
-      'easeFactorMax': easeFactorMax,
-      'easeFactorChange': easeFactorChange,
-      'defaultEaseFactor': defaultEaseFactor,
     };
   }
 
-  /// Créer avec les valeurs par défaut (SM-2)
+  /// Créer avec les valeurs par défaut (FSRS)
   factory SRSSettings.defaultSettings() {
     return SRSSettings(
-      algorithm: 'sm2',
-      initialInterval: 1.0,
-      minimumInterval: 1.0,
-      maximumInterval: 36500.0,
-      easyBonus: 1.3,
-      intervalModifier: 1.0,
-      initialIntervals: {
-        'AGAIN': 0.0,
-        'HARD': 0.5,
-        'GOOD': 1.0,
-        'EASY': 4.0,
-      },
-      newExercisesPerDay: 20,
-      maxReviewsPerDay: 200,
-      easeFactorMin: 1.3,
-      easeFactorMax: 2.5,
-      easeFactorChange: {
-        'AGAIN': -0.2,
-        'HARD': -0.15,
-        'GOOD': 0.0,
-        'EASY': 0.15,
-      },
-      defaultEaseFactor: 2.5,
+      fsrsParams: _getDefaultFSRSParams(),
+      requestRetention: 0.9, // 90% de rétention cible
+      newExercisesPerDay: 5,
+      maxReviewsPerDay: 15,
     );
   }
 
   /// Créer une copie avec des valeurs modifiées
   SRSSettings copyWith({
-    String? algorithm,
-    double? initialInterval,
-    double? minimumInterval,
-    double? maximumInterval,
-    double? easyBonus,
-    double? intervalModifier,
-    Map<String, double>? initialIntervals,
+    List<double>? fsrsParams,
+    double? requestRetention,
     int? newExercisesPerDay,
     int? maxReviewsPerDay,
-    double? easeFactorMin,
-    double? easeFactorMax,
-    Map<String, double>? easeFactorChange,
-    double? defaultEaseFactor,
   }) {
     return SRSSettings(
-      algorithm: algorithm ?? this.algorithm,
-      initialInterval: initialInterval ?? this.initialInterval,
-      minimumInterval: minimumInterval ?? this.minimumInterval,
-      maximumInterval: maximumInterval ?? this.maximumInterval,
-      easyBonus: easyBonus ?? this.easyBonus,
-      intervalModifier: intervalModifier ?? this.intervalModifier,
-      initialIntervals: initialIntervals ?? this.initialIntervals,
+      fsrsParams: fsrsParams ?? this.fsrsParams,
+      requestRetention: requestRetention ?? this.requestRetention,
       newExercisesPerDay: newExercisesPerDay ?? this.newExercisesPerDay,
       maxReviewsPerDay: maxReviewsPerDay ?? this.maxReviewsPerDay,
-      easeFactorMin: easeFactorMin ?? this.easeFactorMin,
-      easeFactorMax: easeFactorMax ?? this.easeFactorMax,
-      easeFactorChange: easeFactorChange ?? this.easeFactorChange,
-      defaultEaseFactor: defaultEaseFactor ?? this.defaultEaseFactor,
     );
   }
 }
-

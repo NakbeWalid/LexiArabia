@@ -5,8 +5,7 @@ class DailyLimitService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
   static const String _usersCollection = 'users';
-  static const int _defaultDailyLimit =
-      5; // Limite par défaut : 5 leçons par jour
+  static const int _defaultDailyLimit = 2;
 
   /// Récupère l'ID de l'utilisateur actuel
   static String? _getCurrentUserId() {

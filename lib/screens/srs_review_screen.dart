@@ -27,6 +27,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
   List<SRSExercise> _newExercises = [];
   bool _isLoading = true;
   int _currentIndex = 0;
+  bool _showIntro = true;
   Map<String, Exercise> _exerciseCache = {}; // Cache pour les exercices
   Map<String, DateTime> _exerciseStartTimes =
       {}; // exerciseId -> temps de début
@@ -59,9 +60,25 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
         await SRSDatabaseInit.initializeSRSCollections(userId);
       }
 
-      // Charger les exercices à réviser
-      final dueExercises = await SRSService.getDueExercises(userId);
-      final newExercises = await SRSService.getNewExercises(userId);
+      // Charger les exercices à réviser avec:
+      // - Limite quotidienne stricte (10–15 recommandé, 15 par défaut)
+      // - Priorisation (le plus ancien / oublié)
+      // - Répartition après absence (backlog smoothing)
+      final settings = await SRSService.getSettings(userId);
+      final dueExercises = await SRSService.getDueExercises(
+        userId,
+        smoothBacklog: true,
+      );
+
+      // Option B (Duolingo-like): réduire les "new" quand il y a beaucoup de due
+      final newLimit = SRSService.computeDailyNewLimit(
+        settings: settings,
+        dueSelectedCount: dueExercises.length,
+      );
+      final newExercises = await SRSService.getNewExercises(
+        userId,
+        limitOverride: newLimit,
+      );
 
       // Convertir les exercices SRS en objets Exercise pour l'affichage
       for (final srsExercise in [...dueExercises, ...newExercises]) {
@@ -77,6 +94,21 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
         _newExercises = newExercises;
         _isLoading = false;
       });
+
+      // Petite intro UX (affichée une seule fois au début de la session)
+      if (mounted && (dueExercises.isNotEmpty || newExercises.isNotEmpty)) {
+        Future.delayed(const Duration(milliseconds: 2600), () {
+          if (mounted) {
+            setState(() {
+              _showIntro = false;
+            });
+          }
+        });
+      } else if (mounted) {
+        setState(() {
+          _showIntro = false;
+        });
+      }
     } catch (e) {
       print('❌ Erreur lors du chargement des exercices SRS: $e');
       setState(() {
@@ -199,7 +231,9 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
   /// Obtenir tous les exercices à réviser (nouveaux + à réviser)
   List<SRSExercise> get _allExercises => [..._newExercises, ..._dueExercises];
 
-  /// Calculer automatiquement la qualité (0-3) basée sur le nombre d'essais et le temps
+  /// Calculer automatiquement la qualité (1-3) basée sur le nombre d'essais et le temps
+  /// IMPORTANT: Dans notre UX, l'utilisateur ne passe pas au prochain exercice tant qu'il n'a pas réussi.
+  /// Donc "AGAIN" (0) n'est pas utilisé: on mappe le pire cas vers HARD (1).
   int _calculateQuality(int attempts, int timeInSeconds) {
     const int fastTimeThreshold = 10;
     const int slowTimeThreshold = 30;
@@ -217,7 +251,7 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
     } else if (attempts <= hardAttempts) {
       return 1; // HARD
     } else {
-      return 0; // AGAIN
+      return 1; // HARD (pire cas)
     }
   }
 
@@ -561,6 +595,46 @@ class _SRSReviewScreenState extends State<SRSReviewScreen> {
                       Expanded(
                         child: Column(
                           children: [
+                            if (_showIntro) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.18),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      "C'est le temps de réviser tes mots !!",
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      "Fais une petite session — ça prend 2 minutes.",
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white.withOpacity(0.8),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ).animate().fadeIn().slideY(begin: -0.15),
+                              const SizedBox(height: 10),
+                            ],
                             Text(
                               "Review ${_currentIndex + 1} of ${_allExercises.length}",
                               style: GoogleFonts.poppins(

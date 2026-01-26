@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
 import 'package:dualingocoran/services/theme_provider.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
+import 'package:dualingocoran/services/auth_service.dart';
+import 'package:dualingocoran/services/user_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,6 +17,20 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
+
+  String _signOutLabel(LanguageProvider languageProvider) {
+    final code = languageProvider.getCurrentLanguageCode();
+    if (code == 'fr') return 'Se déconnecter';
+    if (code == 'ar') return 'تسجيل الخروج';
+    return 'Sign out';
+  }
+
+  String _accountLabel(LanguageProvider languageProvider) {
+    final code = languageProvider.getCurrentLanguageCode();
+    if (code == 'fr') return 'Compte';
+    if (code == 'ar') return 'الحساب';
+    return 'Account';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,37 +121,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     SizedBox(height: 40),
 
-                    // Bouton de sauvegarde
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Paramètres sauvegardés',
-                                style: GoogleFonts.poppins(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              backgroundColor: Colors.green,
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                        ),
-                        child: Text(
-                          'Sauvegarder',
-                          style: GoogleFonts.poppins(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                    _buildSectionHeader(
+                      context,
+                      _accountLabel(languageProvider),
                     ),
+                    SizedBox(height: 20),
+                    _buildActionTile(
+                      context,
+                      icon: Icons.logout_rounded,
+                      title: _signOutLabel(languageProvider),
+                      subtitle:
+                          languageProvider.getCurrentLanguageCode() == 'fr'
+                          ? 'Vous pourrez vous reconnecter à tout moment.'
+                          : (languageProvider.getCurrentLanguageCode() == 'ar'
+                                ? 'يمكنك تسجيل الدخول مرة أخرى في أي وقت.'
+                                : 'You can sign back in anytime.'),
+                      color: Colors.redAccent,
+                      isDanger: true,
+                      onTap: () =>
+                          _showSignOutDialog(context, languageProvider),
+                    ),
+
+                    SizedBox(height: 40),
+
+                    // Bouton de sauvegarde,
                     SizedBox(height: 20), // Espace en bas pour le scroll
                   ],
                 ),
@@ -320,5 +330,163 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildActionTile(
+    BuildContext context, {
+    required String title,
+    required VoidCallback onTap,
+    String? subtitle,
+    IconData? icon,
+    Color? color,
+    bool isDanger = false,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+    final backgroundColor = isDark
+        ? Colors.white.withOpacity(0.08)
+        : Colors.white.withOpacity(0.95);
+    final borderColor = isDark
+        ? Colors.white.withOpacity(0.12)
+        : Colors.black.withOpacity(0.05);
+    final accent = (color ?? colorScheme.primary);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor, width: 1),
+            boxShadow: isDark
+                ? []
+                : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
+          ),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  padding: EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: accent.withOpacity(isDark ? 0.16 : 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: isDanger ? Colors.redAccent : accent,
+                    size: 20,
+                  ),
+                ),
+                SizedBox(width: 16),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        color: isDanger
+                            ? (isDark ? Colors.redAccent : Colors.red.shade700)
+                            : colorScheme.onBackground,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: GoogleFonts.poppins(
+                          color: isDark ? Colors.white70 : Colors.black54,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              SizedBox(width: 12),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark ? Colors.white54 : Colors.black45,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showSignOutDialog(
+    BuildContext context,
+    LanguageProvider languageProvider,
+  ) async {
+    final title = _signOutLabel(languageProvider);
+    final code = languageProvider.getCurrentLanguageCode();
+    final content = code == 'fr'
+        ? 'Êtes-vous sûr de vouloir vous déconnecter ?'
+        : (code == 'ar'
+              ? 'هل أنت متأكد أنك تريد تسجيل الخروج؟'
+              : 'Are you sure you want to sign out?');
+
+    final cancelLabel = code == 'fr'
+        ? 'Annuler'
+        : (code == 'ar' ? 'إلغاء' : 'Cancel');
+
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1A1A2E) : Colors.white,
+          title: Text(
+            title,
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+          ),
+          content: Text(content, style: GoogleFonts.poppins()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(cancelLabel, style: GoogleFonts.poppins()),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(title, style: GoogleFonts.poppins()),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSignOut == true && mounted) {
+      HapticFeedback.mediumImpact();
+      await Provider.of<AuthService>(context, listen: false).signOut();
+      if (!mounted) return;
+      Provider.of<UserProvider>(context, listen: false).logout();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+    }
   }
 }

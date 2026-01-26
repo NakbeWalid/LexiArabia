@@ -4,11 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class SRSDatabaseInit {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Initialise les paramètres SRS par défaut pour un utilisateur
-  /// Crée le document srsSettings avec les valeurs par défaut (algorithme SM-2)
+  /// Initialise les paramètres FSRS par défaut pour un utilisateur
+  /// Crée le document srsSettings avec les valeurs par défaut (algorithme FSRS)
   static Future<void> initializeSRSSettings(String userId) async {
     try {
-      print('🚀 Initialisation des paramètres SRS pour l\'utilisateur: $userId');
+      print(
+        '🚀 Initialisation des paramètres SRS pour l\'utilisateur: $userId',
+      );
 
       final srsSettingsRef = _firestore
           .collection('users')
@@ -23,42 +25,36 @@ class SRSDatabaseInit {
         return;
       }
 
-      // Paramètres SRS par défaut (algorithme SM-2 comme Anki)
+      // Paramètres SRS par défaut (algorithme FSRS)
       final defaultSettings = {
-        'algorithm': 'sm2',
-        
-        // Paramètres SM-2
-        'initialInterval': 1.0, // 1 jour
-        'minimumInterval': 1.0, // 1 jour minimum
-        'maximumInterval': 36500.0, // 100 ans maximum
-        'easyBonus': 1.3, // Bonus pour EASY
-        'intervalModifier': 1.0, // Modificateur global
-        
-        // Intervalles initiaux pour chaque qualité (en jours)
-        'initialIntervals': {
-          'AGAIN': 0.0, // Recommencer immédiatement
-          'HARD': 0.5, // 12 heures
-          'GOOD': 1.0, // 1 jour
-          'EASY': 4.0, // 4 jours
-        },
-        
+        'algorithm': 'fsrs',
+
+        // Paramètres FSRS
+        'fsrsParams': [
+          0.4,
+          1.6,
+          10.0,
+          5.8,
+          4.93,
+          0.94,
+          0.86,
+          0.01,
+          1.49,
+          0.14,
+          0.94,
+          2.18,
+          0.05,
+          0.34,
+          1.26,
+          0.29,
+          2.61,
+        ],
+        'requestRetention': 0.9, // 90% de rétention cible
         // Limites quotidiennes
-        'newExercisesPerDay': 20, // Nouveaux exercices à réviser par jour
-        'maxReviewsPerDay': 200, // Révisions max par jour
-        
-        // Modificateurs de facilité
-        'easeFactorMin': 1.3, // Minimum
-        'easeFactorMax': 2.5, // Maximum (défaut)
-        'easeFactorChange': {
-          'AGAIN': -0.2, // Réduire la facilité
-          'HARD': -0.15, // Réduire légèrement
-          'GOOD': 0.0, // Pas de changement
-          'EASY': 0.15, // Augmenter légèrement
-        },
-        
-        // Facteur de facilité initial
-        'defaultEaseFactor': 2.5,
-        
+        // Objectif UX: éviter la surcharge après une absence.
+        // Les "new" sont limités et les révisions sont plafonnées.
+        'newExercisesPerDay': 5, // Nouveaux exercices SRS/jour
+        'maxReviewsPerDay': 15, // Révisions max/jour (10–15 recommandé)
         // Créé à
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -73,10 +69,12 @@ class SRSDatabaseInit {
   }
 
   /// Initialise les collections SRS pour un utilisateur
-  /// Crée les sous-collections srsExercises et srsReviews
+  /// Crée la sous-collection srsExercises (les statistiques sont agrégées dans chaque exercice)
   static Future<void> initializeSRSCollections(String userId) async {
     try {
-      print('🚀 Initialisation des collections SRS pour l\'utilisateur: $userId');
+      print(
+        '🚀 Initialisation des collections SRS pour l\'utilisateur: $userId',
+      );
 
       // Initialiser les paramètres SRS
       await initializeSRSSettings(userId);
@@ -89,15 +87,8 @@ class SRSDatabaseInit {
           .collection('srsExercises')
           .doc('_init');
 
-      final srsReviewsRef = _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('srsReviews')
-          .doc('_init');
-
-      // Vérifier si les collections existent déjà
+      // Vérifier si la collection existe déjà
       final exercisesInit = await srsExercisesRef.get();
-      final reviewsInit = await srsReviewsRef.get();
 
       if (!exercisesInit.exists) {
         await srsExercisesRef.set({
@@ -107,15 +98,9 @@ class SRSDatabaseInit {
         print('✅ Collection srsExercises initialisée');
       }
 
-      if (!reviewsInit.exists) {
-        await srsReviewsRef.set({
-          'initialized': true,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        print('✅ Collection srsReviews initialisée');
-      }
-
-      print('✅ Collections SRS initialisées avec succès pour l\'utilisateur: $userId');
+      print(
+        '✅ Collections SRS initialisées avec succès pour l\'utilisateur: $userId',
+      );
     } catch (e) {
       print('❌ Erreur lors de l\'initialisation des collections SRS: $e');
       rethrow;
@@ -125,7 +110,9 @@ class SRSDatabaseInit {
   /// Initialise les collections SRS pour tous les utilisateurs existants
   static Future<void> initializeSRSForAllUsers() async {
     try {
-      print('🚀 Initialisation des collections SRS pour tous les utilisateurs...');
+      print(
+        '🚀 Initialisation des collections SRS pour tous les utilisateurs...',
+      );
 
       final usersSnapshot = await _firestore.collection('users').get();
       int initializedCount = 0;
@@ -139,9 +126,13 @@ class SRSDatabaseInit {
         }
       }
 
-      print('✅ Collections SRS initialisées pour $initializedCount utilisateur(s)');
+      print(
+        '✅ Collections SRS initialisées pour $initializedCount utilisateur(s)',
+      );
     } catch (e) {
-      print('❌ Erreur lors de l\'initialisation pour tous les utilisateurs: $e');
+      print(
+        '❌ Erreur lors de l\'initialisation pour tous les utilisateurs: $e',
+      );
       rethrow;
     }
   }
@@ -155,13 +146,6 @@ class SRSDatabaseInit {
           .collection('users')
           .doc(userId)
           .collection('srsExercises')
-          .doc('_init')
-          .delete();
-
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('srsReviews')
           .doc('_init')
           .delete();
 
@@ -242,24 +226,27 @@ class SRSDatabaseInit {
         'lessonId': 'example_lesson',
         'exerciseIndex': 0,
         'exerciseType': 'multiple_choice',
-        
-        // Données SRS
+
+        // Données FSRS
         'interval': 0.0,
-        'easeFactor': 2.5,
-        'repetitions': 0,
+        'stability': 0.4,
+        'difficulty': 5.0,
+        'state': 0,
+        'lapses': 0,
+        'elapsedDays': 0,
         'dueDate': Timestamp.fromDate(now),
-        
+
         // État
         'status': 'new',
         'lastReviewed': null,
         'createdAt': Timestamp.fromDate(now),
-        
+
         // Métadonnées
         'exerciseData': {
           'question': 'Exemple de question',
           'type': 'multiple_choice',
         },
-        
+
         // Statistiques
         'totalReviews': 0,
         'correctReviews': 0,
@@ -281,4 +268,3 @@ class SRSDatabaseInit {
     }
   }
 }
-

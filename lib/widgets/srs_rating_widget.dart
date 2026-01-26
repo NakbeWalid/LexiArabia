@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 /// Widget pour noter la difficulté d'un exercice SRS
-/// Affiche les boutons AGAIN, HARD, GOOD, EASY
+/// Affiche les boutons HARD, GOOD, EASY
 class SRSRatingWidget extends StatelessWidget {
   final Function(int quality) onRatingSelected;
   final bool showLabels;
@@ -26,9 +26,7 @@ class SRSRatingWidget extends StatelessWidget {
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -44,18 +42,10 @@ class SRSRatingWidget extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
           if (showLabels) SizedBox(height: 20),
-          
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildRatingButton(
-                context: context,
-                quality: 0,
-                label: "AGAIN",
-                icon: Icons.close,
-                color: Colors.red,
-                onTap: () => onRatingSelected(0),
-              ),
               _buildRatingButton(
                 context: context,
                 quality: 1,
@@ -102,10 +92,7 @@ class SRSRatingWidget extends StatelessWidget {
         padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              color.withOpacity(0.8),
-              color.withOpacity(0.6),
-            ],
+            colors: [color.withOpacity(0.8), color.withOpacity(0.6)],
           ),
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
@@ -136,4 +123,3 @@ class SRSRatingWidget extends StatelessWidget {
     ).animate().scale(delay: (quality * 50).ms);
   }
 }
-

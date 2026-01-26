@@ -8,6 +8,9 @@ import 'package:dualingocoran/screens/profile_screen.dart';
 import 'package:dualingocoran/screens/lesson_preview_screen.dart';
 import 'package:dualingocoran/screens/settings_screen.dart';
 import 'package:dualingocoran/screens/progression_screen.dart';
+import 'package:dualingocoran/screens/srs_review_screen.dart';
+import 'package:dualingocoran/services/srs_service.dart';
+import 'package:dualingocoran/services/srs_database_init.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:dualingocoran/services/language_provider.dart';
@@ -484,6 +487,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   int _previousIndex = 0;
+  bool _hasCheckedSRS = false;
 
   static final List<Widget> _screens = [
     RoadmapBubbleScreen(),
@@ -491,6 +495,69 @@ class _MainScreenState extends State<MainScreen> {
     ProfilScreen(),
     SettingsScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSRSReviews();
+  }
+
+  /// Vérifier s'il y a des exercices SRS à réviser et afficher l'écran automatiquement
+  Future<void> _checkSRSReviews() async {
+    if (_hasCheckedSRS) return; // Éviter les vérifications multiples
+
+    try {
+      final userProvider = Provider.of<UserProvider>(context, listen: false);
+      final userId = userProvider.currentUser?.userId;
+
+      if (userId == null) {
+        _hasCheckedSRS = true;
+        return;
+      }
+
+      // S'assurer que SRS est initialisé
+      if (!await SRSDatabaseInit.isSRSInitialized(userId)) {
+        await SRSDatabaseInit.initializeSRSCollections(userId);
+        _hasCheckedSRS = true;
+        return;
+      }
+
+      // Vérifier s'il y a des exercices à réviser (limite quotidienne stricte)
+      // IMPORTANT: ne pas "smoother" ici pour éviter des writes juste pour un check.
+      final settings = await SRSService.getSettings(userId);
+      final dueExercises = await SRSService.getDueExercises(userId);
+      final newLimit = SRSService.computeDailyNewLimit(
+        settings: settings,
+        dueSelectedCount: dueExercises.length,
+      );
+      final newExercises = await SRSService.getNewExercises(
+        userId,
+        limitOverride: newLimit,
+      );
+      final totalExercises = dueExercises.length + newExercises.length;
+
+      // Si il y a des exercices à réviser, afficher l'écran de révision
+      if (totalExercises > 0 && mounted) {
+        // Marquer comme vérifié avant la navigation pour éviter les vérifications multiples
+        _hasCheckedSRS = true;
+
+        await Future.delayed(
+          const Duration(milliseconds: 800),
+        ); // Petit délai pour l'animation
+        if (mounted) {
+          await Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (context) => SRSReviewScreen()));
+        }
+      } else {
+        // Pas d'exercices à réviser, marquer comme vérifié
+        _hasCheckedSRS = true;
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la vérification des révisions SRS: $e');
+      _hasCheckedSRS = true;
+    }
+  }
 
   void _onItemTapped(int index) {
     if (index != _selectedIndex) {
@@ -755,32 +822,110 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
 
     final scrollOffset = _scrollController.offset;
     final screenHeight = MediaQuery.of(context).size.height;
+    final viewportCenter =
+        scrollOffset + screenHeight * 0.5; // Centre de la vue
 
-    // Logique simplifiée : basée sur la position de scroll
-    for (int i = 0; i < _sections.length; i++) {
-      final section = _sections[i];
+    // Calculer l'index de l'item actuel basé sur la position de scroll
+    // Utiliser la même formule que _calculateEnhancedBubblePosition : baseY = 200.0 + (index * 160.0)
+    final baseY = 200.0;
+    final itemHeight = 160.0; // Hauteur par item (séparateur ou leçon)
 
-      // Calculer la position approximative de la section
-      final sectionStartY = 200 + (i * 300.0); // 300px par section
-      final sectionEndY = sectionStartY + 300;
+    // Calculer l'index approximatif de l'item visible au centre
+    int currentItemIndex = ((viewportCenter - baseY) / itemHeight).floor();
+    currentItemIndex = currentItemIndex.clamp(
+      0,
+      1000,
+    ); // Éviter les index négatifs ou trop grands
 
-      // Vérifier si l'utilisateur est dans cette section
-      if (scrollOffset >= sectionStartY - screenHeight * 0.3 &&
-          scrollOffset <= sectionEndY - screenHeight * 0.3) {
-        if (_currentSection != section['name']) {
-          setState(() {
-            _currentSection = section['name'];
-          });
-          _showSectionPanel();
+    // Construire la liste des items dans l'ordre pour trouver la section correspondante
+    final List<Map<String, dynamic>> roadmapItems = [];
+    int globalIndex = 0;
 
-          // Debug: afficher le changement de section
-          print('🔄 Section changée: ${section['name']} (${section['title']})');
-          print(
-            '📍 Scroll: $scrollOffset, Section: $sectionStartY - $sectionEndY',
-          );
-        }
-        break;
+    for (
+      int sectionIndex = 0;
+      sectionIndex < _sections.length;
+      sectionIndex++
+    ) {
+      final section = _sections[sectionIndex];
+      final sectionLessons =
+          section['lessons'] as List<QueryDocumentSnapshot>? ?? [];
+
+      // Ajouter le séparateur de section
+      if (sectionLessons.isNotEmpty) {
+        roadmapItems.add({
+          'type': 'separator',
+          'sectionName': section['name'] as String,
+          'sectionTitle': section['title'] as String,
+          'sectionIndex': sectionIndex,
+          'index': globalIndex,
+        });
+        globalIndex++;
       }
+
+      // Ajouter les leçons de cette section
+      for (int j = 0; j < sectionLessons.length; j++) {
+        roadmapItems.add({
+          'type': 'lesson',
+          'sectionIndex': sectionIndex,
+          'index': globalIndex,
+        });
+        globalIndex++;
+      }
+    }
+
+    // Trouver la section correspondant à l'item actuel
+    String? newCurrentSection;
+
+    if (currentItemIndex >= 0 && currentItemIndex < roadmapItems.length) {
+      final currentItem = roadmapItems[currentItemIndex];
+      final sectionIndex = currentItem['sectionIndex'] as int?;
+
+      if (sectionIndex != null && sectionIndex < _sections.length) {
+        newCurrentSection = _sections[sectionIndex]['name'] as String;
+      }
+    }
+
+    // Si l'index est dans une section, parcourir en arrière pour trouver le séparateur le plus proche
+    if (newCurrentSection == null) {
+      for (int i = currentItemIndex; i >= 0; i--) {
+        if (i < roadmapItems.length) {
+          final item = roadmapItems[i];
+          if (item['type'] == 'separator') {
+            final sectionIndex = item['sectionIndex'] as int?;
+            if (sectionIndex != null && sectionIndex < _sections.length) {
+              newCurrentSection = _sections[sectionIndex]['name'] as String;
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Si aucune section trouvée, utiliser la première ou dernière selon le scroll
+    final finalCurrentSection =
+        newCurrentSection ??
+        (scrollOffset < 200
+            ? _sections.first['name'] as String
+            : _sections.last['name'] as String);
+
+    // Mettre à jour seulement si la section a changé
+    if (_currentSection != finalCurrentSection) {
+      setState(() {
+        _currentSection = finalCurrentSection;
+      });
+      _showSectionPanel();
+
+      // Debug: afficher le changement de section
+      final sectionData = _sections.firstWhere(
+        (s) => s['name'] == finalCurrentSection,
+        orElse: () => _sections.first,
+      );
+      print(
+        '🔄 Section changée: ${sectionData['title']} (${finalCurrentSection})',
+      );
+      print(
+        '📍 Scroll: $scrollOffset, Item Index: $currentItemIndex, Viewport Center: $viewportCenter',
+      );
     }
   }
 
@@ -1739,6 +1884,30 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
               offset: Offset(0, (1 - animationValue) * 100),
               child: GestureDetector(
                 onTap: () async {
+                  // Vérifier si la leçon est complétée
+                  final userProvider = Provider.of<UserProvider>(
+                    context,
+                    listen: false,
+                  );
+                  final lessonProgress =
+                      userProvider.currentUser?.progress.lessons[lessonId];
+                  final isCompleted = lessonProgress?.completed ?? false;
+
+                  // Si la leçon est complétée, afficher un dialogue de confirmation
+                  if (isCompleted) {
+                    final shouldRedo = await showDialog<bool>(
+                      context: context,
+                      barrierDismissible: true,
+                      builder: (context) =>
+                          _LessonRedoDialog(lessonTitle: title),
+                    );
+
+                    // Si l'utilisateur annule, ne rien faire
+                    if (shouldRedo != true) {
+                      return;
+                    }
+                  }
+
                   // Naviguer vers la leçon
                   final result = await Navigator.push(
                     context,
@@ -1757,10 +1926,6 @@ class _RoadmapBubbleScreenState extends State<RoadmapBubbleScreen>
                   // Rafraîchir la roadmap si la leçon a été complétée
                   if (result == true && mounted) {
                     // Recharger les données utilisateur depuis Firestore pour avoir les dernières données
-                    final userProvider = Provider.of<UserProvider>(
-                      context,
-                      listen: false,
-                    );
                     final currentUser = FirebaseAuth.instance.currentUser;
                     if (currentUser != null) {
                       await userProvider.loadUser(currentUser.uid);
@@ -2226,6 +2391,186 @@ class ExercisesScreen extends StatelessWidget {
           // Passe la liste d'exercices à la page
           return ExercisePage(exercises: exercises);
         },
+      ),
+    );
+  }
+}
+
+/// Dialogue moderne pour demander si l'utilisateur veut refaire une leçon complétée
+class _LessonRedoDialog extends StatelessWidget {
+  final String lessonTitle;
+
+  const _LessonRedoDialog({required this.lessonTitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(30),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          ),
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 25,
+              offset: Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icône de vérification avec animation
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.amber.shade300, Colors.orange.shade400],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amber.withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(Icons.check_circle, size: 45, color: Colors.white),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Titre
+            Text(
+              'Leçon déjà complétée',
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 12),
+
+            // Message
+            Text(
+              'Vous avez déjà complété cette leçon.\nVoulez-vous la refaire ?',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                color: Colors.white.withOpacity(0.9),
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 8),
+
+            // Nom de la leçon
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                lessonTitle,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // Boutons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Bouton Annuler
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.3),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        'Annuler',
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Bouton Refaire
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.green.shade400,
+                            Colors.green.shade600,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.shade400.withOpacity(0.4),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.refresh, color: Colors.white, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Refaire',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

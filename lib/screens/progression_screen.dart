@@ -67,8 +67,16 @@ class _ProgressionScreenState extends State<ProgressionScreen>
       }
 
       // Charger les exercices à réviser
+      final settings = await SRSService.getSettings(userId);
       final dueExercises = await SRSService.getDueExercises(userId);
-      final newExercises = await SRSService.getNewExercises(userId);
+      final newLimit = SRSService.computeDailyNewLimit(
+        settings: settings,
+        dueSelectedCount: dueExercises.length,
+      );
+      final newExercises = await SRSService.getNewExercises(
+        userId,
+        limitOverride: newLimit,
+      );
 
       setState(() {
         _pendingReviews = dueExercises.length + newExercises.length;

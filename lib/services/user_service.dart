@@ -178,10 +178,22 @@ class UserService {
           final userData = userDoc.data()!;
           final lessonsCompleted = userData['stats']?['lessonsCompleted'] ?? 0;
           final currentXP = userData['stats']?['totalXP'] ?? 0;
-          final newXP = currentXP + xpToAdd;
+          
+          // Vérifier si la leçon est déjà complétée
+          final progress = userData['progress'] as Map<String, dynamic>?;
+          final lessonsProgress = progress?['lessons'] as Map<String, dynamic>? ?? {};
+          final lessonProgress = lessonsProgress[lessonId] as Map<String, dynamic>?;
+          final isAlreadyCompleted = lessonProgress?['completed'] == true;
+
+          // Ne pas incrémenter lessonsCompleted et XP si la leçon est déjà complétée
+          final newXP = isAlreadyCompleted ? currentXP : currentXP + xpToAdd;
           final newLevel = (newXP / 1000).floor() + 1;
+          final newLessonsCompleted = isAlreadyCompleted 
+              ? lessonsCompleted 
+              : lessonsCompleted + 1;
 
           print('📊 Stats actuelles - lessonsCompleted: $lessonsCompleted');
+          print('📊 Leçon déjà complétée: $isAlreadyCompleted');
           print(
             '📊 XP actuel: $currentXP, XP à ajouter: $xpToAdd, Nouveau XP: $newXP',
           );
@@ -191,7 +203,7 @@ class UserService {
 
           // Préparer la mise à jour
           final updateData = <String, dynamic>{
-            'stats.lessonsCompleted': lessonsCompleted + 1,
+            'stats.lessonsCompleted': newLessonsCompleted,
             'stats.totalXP': newXP,
             'stats.currentLevel': newLevel,
             'progress.lessons.$lessonId.completed': true,
@@ -203,7 +215,6 @@ class UserService {
           };
 
           // S'assurer que progress.lessons existe si nécessaire
-          final progress = userData['progress'] as Map<String, dynamic>?;
           if (progress == null || !progress.containsKey('lessons')) {
             print('⚠️ progress.lessons n\'existe pas, initialisation...');
             updateData['progress.lessons'] = {};

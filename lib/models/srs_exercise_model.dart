@@ -1,32 +1,48 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modèle pour un exercice en révision SRS
+/// Modèle pour un exercice en révision avec l'algorithme FSRS
+///
+/// FSRS (Free Spaced Repetition Scheduler) utilise les concepts suivants :
+/// - stability : Temps (en jours) jusqu'à 90% de probabilité de rétention
+/// - difficulty : Difficulté intrinsèque de la carte (0-10)
+/// - state : État de la carte (NEW=0, LEARNING=1, REVIEW=2, RELEARNING=3)
+/// - lapses : Nombre de fois que la carte a été oubliée
+/// - elapsedDays : Jours réels depuis la dernière révision
 class SRSExercise {
   final String exerciseId;
   final String lessonId;
   final int exerciseIndex;
   final String exerciseType;
-  
-  // Données SRS (algorithme SM-2)
-  final double interval; // Intervalle en jours jusqu'à la prochaine révision
-  final double easeFactor; // Facteur de facilité
-  final int repetitions; // Nombre de révisions réussies consécutives
+
+  // Paramètres FSRS
+  final double
+  interval; // Intervalle en jours jusqu'à la prochaine révision (calculé depuis stability)
+  final double
+  stability; // Stabilité : temps jusqu'à 90% de probabilité de rétention (FSRS)
+  final double
+  difficulty; // Difficulté : 0-10, ajustée dynamiquement selon les performances (FSRS)
+  final int state; // État FSRS: 0=New, 1=Learning, 2=Review, 3=Relearning
+  // Nombre total d'oublis historiques (lapses). Dans ce projet, on ne génère plus "AGAIN"(0),
+  // donc ce compteur n'augmente pas automatiquement via les reviews actuelles.
+  final int lapses;
   final DateTime dueDate; // Date/heure de la prochaine révision
-  
+  final int elapsedDays; // Jours écoulés depuis la dernière révision (FSRS)
+
   // État actuel
-  final String status; // "new", "learning", "review", "mastered"
+  final String
+  status; // "new", "learning", "review", "mastered" (dérivé de state)
   final DateTime? lastReviewed;
   final DateTime createdAt;
-  
+
   // Métadonnées de l'exercice (pour le retrouver)
   final Map<String, dynamic> exerciseData;
-  
+
   // Statistiques
   final int totalReviews;
   final int correctReviews;
   final int incorrectReviews;
   final int hardReviews;
-  final int? lastQuality; // 0=AGAIN, 1=HARD, 2=GOOD, 3=EASY
+  final int? lastQuality; // 1=HARD, 2=GOOD, 3=EASY (0=AGAIN non utilisé)
 
   SRSExercise({
     required this.exerciseId,
@@ -34,9 +50,12 @@ class SRSExercise {
     required this.exerciseIndex,
     required this.exerciseType,
     required this.interval,
-    required this.easeFactor,
-    required this.repetitions,
+    required this.stability,
+    required this.difficulty,
+    required this.state,
+    required this.lapses,
     required this.dueDate,
+    required this.elapsedDays,
     required this.status,
     this.lastReviewed,
     required this.createdAt,
@@ -72,16 +91,62 @@ class SRSExercise {
       return null;
     }
 
+    // FSRS fields
+    final stability = (data['stability'] ?? 0.4).toDouble();
+    final difficulty = (data['difficulty'] ?? 5.0).toDouble();
+    final state = data['state'] ?? 0;
+    final lapses = data['lapses'] ?? 0;
+    final elapsedDays = data['elapsedDays'] ?? 0;
+
+    // Calculer le statut depuis state si nécessaire
+    String status = data['status'] ?? '';
+    if (status.isEmpty) {
+      switch (state) {
+        case 0:
+          status = 'new';
+          break;
+        case 1:
+          status = 'learning';
+          break;
+        case 2:
+          status = 'review';
+          break;
+        case 3:
+          status = 'learning';
+          break;
+        default:
+          status = 'new';
+      }
+    }
+
+    // Calculer interval depuis stability si nécessaire
+    double interval = (data['interval'] ?? stability).toDouble();
+    if (interval == 0 && stability > 0) {
+      interval = stability;
+    }
+
+    // Calculer elapsedDays depuis lastReviewed si nécessaire
+    int calculatedElapsedDays = elapsedDays;
+    if (calculatedElapsedDays == 0 && data['lastReviewed'] != null) {
+      final lastReviewed = parseTimestampNullable(data['lastReviewed']);
+      if (lastReviewed != null) {
+        calculatedElapsedDays = DateTime.now().difference(lastReviewed).inDays;
+      }
+    }
+
     return SRSExercise(
       exerciseId: data['exerciseId'] ?? '',
       lessonId: data['lessonId'] ?? '',
       exerciseIndex: data['exerciseIndex'] ?? 0,
       exerciseType: data['exerciseType'] ?? '',
-      interval: (data['interval'] ?? 0.0).toDouble(),
-      easeFactor: (data['easeFactor'] ?? 2.5).toDouble(),
-      repetitions: data['repetitions'] ?? 0,
+      interval: interval,
+      stability: stability,
+      difficulty: difficulty,
+      state: state,
+      lapses: lapses,
       dueDate: parseTimestamp(data['dueDate']),
-      status: data['status'] ?? 'new',
+      elapsedDays: calculatedElapsedDays,
+      status: status,
       lastReviewed: parseTimestampNullable(data['lastReviewed']),
       createdAt: parseTimestamp(data['createdAt']),
       exerciseData: data['exerciseData'] as Map<String, dynamic>? ?? {},
@@ -100,12 +165,18 @@ class SRSExercise {
       'lessonId': lessonId,
       'exerciseIndex': exerciseIndex,
       'exerciseType': exerciseType,
+      // FSRS fields
       'interval': interval,
-      'easeFactor': easeFactor,
-      'repetitions': repetitions,
+      'stability': stability,
+      'difficulty': difficulty,
+      'state': state,
+      'lapses': lapses,
+      'elapsedDays': elapsedDays,
       'dueDate': Timestamp.fromDate(dueDate),
       'status': status,
-      'lastReviewed': lastReviewed != null ? Timestamp.fromDate(lastReviewed!) : null,
+      'lastReviewed': lastReviewed != null
+          ? Timestamp.fromDate(lastReviewed!)
+          : null,
       'createdAt': Timestamp.fromDate(createdAt),
       'exerciseData': exerciseData,
       'totalReviews': totalReviews,
@@ -123,9 +194,12 @@ class SRSExercise {
     int? exerciseIndex,
     String? exerciseType,
     double? interval,
-    double? easeFactor,
-    int? repetitions,
+    double? stability,
+    double? difficulty,
+    int? state,
+    int? lapses,
     DateTime? dueDate,
+    int? elapsedDays,
     String? status,
     DateTime? lastReviewed,
     DateTime? createdAt,
@@ -142,9 +216,12 @@ class SRSExercise {
       exerciseIndex: exerciseIndex ?? this.exerciseIndex,
       exerciseType: exerciseType ?? this.exerciseType,
       interval: interval ?? this.interval,
-      easeFactor: easeFactor ?? this.easeFactor,
-      repetitions: repetitions ?? this.repetitions,
+      stability: stability ?? this.stability,
+      difficulty: difficulty ?? this.difficulty,
+      state: state ?? this.state,
+      lapses: lapses ?? this.lapses,
       dueDate: dueDate ?? this.dueDate,
+      elapsedDays: elapsedDays ?? this.elapsedDays,
       status: status ?? this.status,
       lastReviewed: lastReviewed ?? this.lastReviewed,
       createdAt: createdAt ?? this.createdAt,
@@ -158,9 +235,10 @@ class SRSExercise {
   }
 
   /// Vérifier si l'exercice est à réviser maintenant
-  bool get isDue => dueDate.isBefore(DateTime.now()) || dueDate.isAtSameMomentAs(DateTime.now());
+  bool get isDue =>
+      dueDate.isBefore(DateTime.now()) ||
+      dueDate.isAtSameMomentAs(DateTime.now());
 
-  /// Vérifier si l'exercice est maîtrisé (interval > 30 jours)
-  bool get isMastered => interval > 30 && status == 'review';
+  /// Vérifier si l'exercice est maîtrisé (FSRS: stabilité > 30 jours et en état review)
+  bool get isMastered => stability > 30 && state == 2 && status == 'review';
 }
-

@@ -192,6 +192,10 @@ class UserProvider extends ChangeNotifier {
     if (_currentUser == null) return;
 
     try {
+      // Vérifier si la leçon est déjà complétée
+      final isAlreadyCompleted =
+          _currentUser!.progress.lessons[lessonId]?.completed ?? false;
+
       await UserService.completeLesson(
         _currentUser!.userId,
         lessonId,
@@ -199,13 +203,7 @@ class UserProvider extends ChangeNotifier {
         xpReward: xpReward,
       );
 
-      // Calculer l'XP basé sur le score (même logique que dans UserService)
-      final xpToAdd =
-          xpReward ?? (50 + (score * 100 / 100).round()).clamp(50, 150);
-      final newXP = _currentUser!.stats.totalXP + xpToAdd;
-      final newLevel = (newXP / 1000).floor() + 1;
-
-      // Recharger les données utilisateur pour obtenir le streak mis à jour
+      // Recharger les données utilisateur pour obtenir les stats mises à jour
       await loadUser(_currentUser!.userId);
 
       // Vérifier et débloquer automatiquement les achievements
@@ -218,12 +216,19 @@ class UserProvider extends ChangeNotifier {
       final updatedLessons = Map<String, LessonProgress>.from(
         _currentUser!.progress.lessons,
       );
+      
+      // Mettre à jour ou créer le LessonProgress
+      final existingProgress = updatedLessons[lessonId];
       updatedLessons[lessonId] = LessonProgress(
         completed: true,
-        completedAt: DateTime.now(),
+        completedAt: existingProgress?.completedAt ?? DateTime.now(),
         score: score,
-        attempts: 1,
-        bestScore: score,
+        attempts: (existingProgress?.attempts ?? 0) + 1,
+        bestScore: existingProgress != null
+            ? (existingProgress.bestScore > score
+                ? existingProgress.bestScore
+                : score)
+            : score,
       );
 
       final updatedProgress = UserProgress(
@@ -231,14 +236,13 @@ class UserProvider extends ChangeNotifier {
         sections: _currentUser!.progress.sections,
       );
 
-      // Utiliser les stats mises à jour depuis Firestore (incluant le streak)
+      // Utiliser les stats mises à jour depuis Firestore (UserService gère déjà l'incrémentation conditionnelle)
       final updatedStats = UserStats(
-        totalXP: newXP,
-        currentLevel: newLevel,
-        currentStreak:
-            _currentUser!.stats.currentStreak, // Mis à jour par loadUser
+        totalXP: _currentUser!.stats.totalXP, // Déjà mis à jour par loadUser
+        currentLevel: _currentUser!.stats.currentLevel, // Déjà mis à jour par loadUser
+        currentStreak: _currentUser!.stats.currentStreak, // Mis à jour par loadUser
         bestStreak: _currentUser!.stats.bestStreak, // Mis à jour par loadUser
-        lessonsCompleted: _currentUser!.stats.lessonsCompleted + 1,
+        lessonsCompleted: _currentUser!.stats.lessonsCompleted, // Déjà mis à jour par loadUser
         totalLessons: _currentUser!.stats.totalLessons,
         exercisesCompleted: _currentUser!.stats.exercisesCompleted,
         wordsLearned: _currentUser!.stats.wordsLearned,
@@ -258,7 +262,7 @@ class UserProvider extends ChangeNotifier {
 
       notifyListeners();
       print(
-        '✅ Leçon terminée: $lessonId (Score: $score, +$xpToAdd XP, Total: $newXP, Niveau: $newLevel)',
+        '✅ Leçon terminée: $lessonId (Score: $score, Déjà complétée: $isAlreadyCompleted)',
       );
     } catch (e) {
       print('❌ Erreur lors de la complétion de la leçon: $e');

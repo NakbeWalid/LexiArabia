@@ -11,6 +11,9 @@ import 'package:dualingocoran/services/user_provider.dart';
 import 'package:dualingocoran/services/srs_service.dart';
 import 'package:dualingocoran/services/srs_database_init.dart';
 import 'package:dualingocoran/services/sound_service.dart';
+import 'package:dualingocoran/services/learning_progress_service.dart';
+import 'package:dualingocoran/screens/learning_progress_celebration_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -89,8 +92,9 @@ class _ExercisePageState extends State<ExercisePage>
     super.dispose();
   }
 
-  /// Calculer automatiquement la qualité (0-3) basée sur le nombre d'essais et le temps
-  /// 0 = AGAIN (très difficile)
+  /// Calculer automatiquement la qualité (1-3) basée sur le nombre d'essais et le temps
+  /// IMPORTANT: Dans notre UX, l'utilisateur ne peut pas passer à l'exercice suivant tant qu'il n'a pas réussi,
+  /// donc "AGAIN" (0) n'est pas pertinent ici.
   /// 1 = HARD (difficile)
   /// 2 = GOOD (bon)
   /// 3 = EASY (facile)
@@ -119,8 +123,8 @@ class _ExercisePageState extends State<ExercisePage>
       // 3 essais max = HARD (1)
       return 1;
     } else {
-      // Plus de 3 essais = AGAIN (0)
-      return 0;
+      // Plus de 3 essais = HARD (1)
+      return 1;
     }
   }
 
@@ -224,31 +228,78 @@ class _ExercisePageState extends State<ExercisePage>
 
       await Future.delayed(const Duration(milliseconds: 200));
 
-      // Incrémenter le compteur de leçons complétées aujourd'hui
-      await DailyLimitService.incrementLessonCount();
-
-      // Marquer la leçon comme complétée dans UserProvider si lessonId est fourni
-      // Le champ 'completed' sera créé dans users/{userId}/progress/lessons/{lessonId}/completed
+      // Vérifier si la leçon est déjà complétée
+      bool isAlreadyCompleted = false;
       if (widget.lessonId != null) {
+        isAlreadyCompleted = await LearningProgressService.isLessonCompleted(
+          widget.lessonId!,
+        );
+      }
+
+      // Incrémenter le compteur de leçons complétées aujourd'hui seulement si nouvelle complétion
+      if (!isAlreadyCompleted) {
+        await DailyLimitService.incrementLessonCount();
+      }
+
+      // Récupérer le pourcentage d'apprentissage gagné
+      double percentageGained = 0.0;
+
+      if (widget.lessonId != null) {
+        // Marquer la leçon comme complétée dans UserProvider
         final userProvider = Provider.of<UserProvider>(context, listen: false);
         final accuracy = widget.exercises.length > 0
             ? ((correctAnswers / widget.exercises.length) * 100).round()
             : 0;
         await userProvider.completeLesson(widget.lessonId!, accuracy);
+
+        // Récupérer le learningPercentage de la leçon depuis Firestore
+        // Seulement si la leçon n'était pas déjà complétée
+        if (!isAlreadyCompleted) {
+          try {
+            final lessonDoc = await FirebaseFirestore.instance
+                .collection('lessons')
+                .doc(widget.lessonId!)
+                .get();
+
+            if (lessonDoc.exists) {
+              final lessonData = lessonDoc.data();
+              percentageGained =
+                  (lessonData?['learningPercentage'] as num?)?.toDouble() ??
+                  0.0;
+            }
+          } catch (e) {
+            print('❌ Erreur lors de la récupération du learningPercentage: $e');
+          }
+        }
       }
 
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => ModernCompletionDialog(
-          totalExercises: widget.exercises.length,
-          correctAnswers: correctAnswers,
-          onClose: () {
-            Navigator.of(context).pop(); // Close dialog
-            Navigator.of(context).pop(true); // Return to roadmap with result
-          },
-        ),
-      );
+      // Naviguer vers la page de célébration seulement si nouvelle complétion
+      if (widget.lessonId != null &&
+          percentageGained > 0 &&
+          !isAlreadyCompleted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => LearningProgressCelebrationScreen(
+              lessonId: widget.lessonId!,
+              percentageGained: percentageGained,
+            ),
+          ),
+        );
+      } else {
+        // Si pas de lessonId, pas de pourcentage, ou déjà complétée, utiliser l'ancien dialogue
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => ModernCompletionDialog(
+            totalExercises: widget.exercises.length,
+            correctAnswers: correctAnswers,
+            onClose: () {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pop(true); // Return to roadmap with result
+            },
+          ),
+        );
+      }
     }
   }
 
