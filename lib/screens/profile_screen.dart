@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -108,9 +109,9 @@ class _ProfilScreenState extends State<ProfilScreen>
         currentUser?.profile.displayName ??
         currentUser?.profile.username ??
         firebaseUser?.displayName ??
-        'User';
+        AppLocalizations.of(context)!.defaultUserName;
     final String email =
-        currentUser?.profile.email ?? firebaseUser?.email ?? 'user@email.com';
+        currentUser?.profile.email ?? firebaseUser?.email ?? '';
 
     // Statistiques réelles
     final int xp = currentUser?.stats.totalXP ?? 0;
@@ -150,7 +151,7 @@ class _ProfilScreenState extends State<ProfilScreen>
                 child: Row(
                   children: [
                     Text(
-                      'Profile',
+                      AppLocalizations.of(context)!.profile,
                       style: GoogleFonts.poppins(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -343,7 +344,7 @@ class _ProfilScreenState extends State<ProfilScreen>
       children: [
         Expanded(
           child: _buildStatCard(
-            "Level",
+            AppLocalizations.of(context)!.level,
             level.toString(),
             Icons.emoji_events,
             Colors.amber,
@@ -356,8 +357,8 @@ class _ProfilScreenState extends State<ProfilScreen>
         SizedBox(width: 16),
         Expanded(
           child: _buildStatCard(
-            "Streak",
-            "$streak days",
+            AppLocalizations.of(context)!.streakLabel,
+            AppLocalizations.of(context)!.daysCount(streak),
             Icons.local_fire_department,
             Colors.orange,
           ),
@@ -461,7 +462,7 @@ class _ProfilScreenState extends State<ProfilScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Learning Progress",
+                AppLocalizations.of(context)!.learningProgress,
                 style: GoogleFonts.poppins(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -512,8 +513,10 @@ class _ProfilScreenState extends State<ProfilScreen>
 
           Text(
             total > 0
-                ? "${((completed / total) * 100).round()}% completed"
-                : "No lessons available",
+                ? AppLocalizations.of(
+                    context,
+                  )!.percentCompleted(((completed / total) * 100).round())
+                : AppLocalizations.of(context)!.noLessonsAvailable,
             style: GoogleFonts.poppins(
               fontSize: 14,
               color: Colors.white.withOpacity(0.7),
@@ -529,7 +532,7 @@ class _ProfilScreenState extends State<ProfilScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Achievements",
+          AppLocalizations.of(context)!.achievements,
           style: GoogleFonts.poppins(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -626,35 +629,35 @@ class _ProfilScreenState extends State<ProfilScreen>
       {
         'id': 'first_lesson',
         'icon': Icons.star,
-        'label': 'First Lesson',
+        'label': AppLocalizations.of(context)!.achFirstLesson,
         'color': Colors.amber,
         'check': () => userModel.stats.lessonsCompleted >= 1,
       },
       {
         'id': 'hundred_xp',
         'icon': Icons.emoji_events,
-        'label': '100 XP',
+        'label': AppLocalizations.of(context)!.ach100Xp,
         'color': Colors.purple,
         'check': () => userModel.stats.totalXP >= 100,
       },
       {
         'id': 'seven_day_streak',
         'icon': Icons.local_fire_department,
-        'label': '7 Day Streak',
+        'label': AppLocalizations.of(context)!.ach7DayStreak,
         'color': Colors.orange,
         'check': () => userModel.stats.currentStreak >= 7,
       },
       {
         'id': 'quick_learner',
         'icon': Icons.psychology,
-        'label': 'Quick Learner',
+        'label': AppLocalizations.of(context)!.achQuickLearner,
         'color': Colors.blue,
         'check': () => userModel.stats.accuracy >= 80,
       },
       {
         'id': 'expert',
         'icon': Icons.military_tech,
-        'label': 'Expert',
+        'label': AppLocalizations.of(context)!.achExpert,
         'color': Colors.green,
         'check': () => userModel.stats.lessonsCompleted >= 10,
       },

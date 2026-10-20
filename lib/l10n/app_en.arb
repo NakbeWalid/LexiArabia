@@ -1,5 +1,5 @@
 {
-  "appTitle": "DualingOcoran",
+  "appTitle": "LexiArabia",
   "roadmap": "Roadmap",
   "profile": "Profile",
   "settings": "Settings",
@@ -73,8 +73,221 @@
   "enableNotifications": "Enable Notifications",
   "sound": "Sound",
   "enableSound": "Enable Sound",
-  "appearance": "Appearance",
-  "enableDarkMode": "Enable dark mode",
   "userSelection": "User Selection",
-  "chooseDemoProfile": "Choose a demo profile"
+  "chooseDemoProfile": "Choose a demo profile",
+  "cancel": "Cancel",
+  "understood": "Got it",
+  "errorGeneric": "Something went wrong. Please try again.",
+  "errorWithDetails": "An error occurred: {details}",
+  "@errorWithDetails": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "sectionDescBasics": "Foundations of Arabic",
+  "sectionDescPronouns": "Pronouns and references",
+  "sectionDescGrammar": "Grammar rules",
+  "sectionDescVocabulary": "Essential vocabulary",
+  "sectionDescConversation": "Dialogues and expressions",
+  "sectionDescCulture": "Culture and traditions",
+  "sectionDescReligion": "Religious terms",
+  "sectionDescAdvanced": "Advanced level",
+  "sectionDescDefault": "Step-by-step learning",
+  "lessonLockedTitle": "Locked lesson",
+  "lessonLockedMessage": "Finish the previous lesson to unlock this one.",
+  "loadLessonsError": "Couldn't load the lessons. Check your connection.",
+  "roadmapWelcomeTitle": "Welcome to your journey!",
+  "roadmapWelcomeSubtitle": "Start learning the words of the Quran",
+  "lessonAlreadyCompletedTitle": "Lesson already completed",
+  "lessonAlreadyCompletedMessage": "You have already completed this lesson.\nDo you want to do it again?",
+  "redo": "Redo",
+  "unknownExerciseType": "Unknown exercise type: {type}",
+  "@unknownExerciseType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "invalidExerciseData": "This exercise can't be displayed.",
+  "noExercisesAvailable": "No exercises available",
+  "trueLabel": "True",
+  "falseLabel": "False",
+  "chooseCorrectAnswer": "Choose the correct answer",
+  "trueOrFalseHint": "Is this statement true or false?",
+  "listenToAudio": "Listen to the audio",
+  "playAudio": "Play pronunciation",
+  "audioUnavailable": "Audio unavailable for this word on this device.",
+  "chooseWhatYouHeard": "Choose what you heard",
+  "completeTheSentence": "Complete the sentence:",
+  "dragTheCorrectWord": "Drag or tap the correct word:",
+  "matchThePairs": "Match the pairs",
+  "feedbackCorrect1": "Excellent!",
+  "feedbackCorrect2": "Well done!",
+  "feedbackCorrect3": "Perfect!",
+  "feedbackIncorrect": "Not quite…",
+  "correctAnswerLabel": "Correct answer:",
+  "feedbackRetryLater": "You'll see this question again at the end.",
+  "quitSessionTitle": "Quit?",
+  "quitSessionMessage": "Your progress in this session will be lost.",
+  "quit": "Quit",
+  "keepLearning": "Keep learning",
+  "soundOn": "Turn sound on",
+  "soundOff": "Turn sound off",
+  "lessonCompleteTitle": "Excellent work!",
+  "lessonCompleteMessage": "You've completed all the exercises in this lesson! 🎉",
+  "xpEarned": "XP earned",
+  "streakLabel": "Streak",
+  "srsIntroTitle": "Time to review your words! 🚀",
+  "srsIntroSubtitle": "{count, plural, =1{1 word to review — a quick session to lock in what you know.} other{{count} words to review — a quick session to lock in what you know.}}",
+  "@srsIntroSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "startReview": "Start",
+  "srsDoneTitle": "Great job! 🎉",
+  "srsDoneMessage": "You've finished all your reviews for today!",
+  "srsEmptyTitle": "No reviews for today! 🎉",
+  "srsEmptyMessage": "Come back tomorrow to strengthen what you've learned",
+  "srsReviewTitle": "SRS Review",
+  "exercisesToReview": "{count, plural, =1{1 exercise to review} other{{count} exercises to review}}",
+  "@exercisesToReview": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noReviewsToday": "No reviews for today",
+  "dailyLimitTitle": "Daily limit reached",
+  "dailyLimitMessage": "You've completed {completed}/{limit} lessons today.",
+  "@dailyLimitMessage": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "limit": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyLimitComeBack": "Come back tomorrow to keep learning!",
+  "account": "Account",
+  "signOut": "Sign out",
+  "signOutSubtitle": "You can sign back in anytime.",
+  "signOutConfirm": "Are you sure you want to sign out?",
+  "dailyReminder": "Daily reminder",
+  "dailyReminderSubtitle": "A notification to keep your streak",
+  "notificationsUnsupported": "Available on the mobile app only",
+  "reminderTime": "Reminder time",
+  "reminderScheduled": "Reminder set for {time} every day",
+  "@reminderScheduled": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "notificationPermissionDenied": "Notifications are blocked. Allow them in your phone settings.",
+  "reminderNotificationTitle": "Time to learn! 📖",
+  "reminderNotificationBody": "A few minutes today to learn new words of the Quran.",
+  "reminderChannelName": "Daily reminders",
+  "congratulations": "Congratulations!",
+  "youProgressed": "You've made progress!",
+  "learningProgress": "Learning progress",
+  "before": "Before",
+  "added": "Added",
+  "now": "Now",
+  "loginTitle": "Sign in",
+  "loginWelcome": "Welcome to LexiArabia",
+  "signupTitle": "Create an account",
+  "signupWelcome": "Join LexiArabia",
+  "nameLabel": "Name",
+  "nameHint": "Your name",
+  "enterName": "Please enter your name",
+  "nameTooShort": "Name must be at least 2 characters",
+  "emailLabel": "Email",
+  "emailHint": "example@email.com",
+  "enterEmail": "Please enter your email",
+  "invalidEmail": "Invalid email",
+  "passwordLabel": "Password",
+  "enterPassword": "Please enter your password",
+  "enterNewPassword": "Please enter a password",
+  "passwordTooShort": "Password must be at least 6 characters",
+  "confirmPasswordLabel": "Confirm password",
+  "confirmPassword": "Please confirm the password",
+  "passwordsDontMatch": "Passwords don't match",
+  "signIn": "Sign in",
+  "signUp": "Sign up",
+  "createMyAccount": "Create my account",
+  "continueWithGoogle": "Continue with Google",
+  "noAccountYet": "Don't have an account? ",
+  "alreadyHaveAccount": "Already have an account? ",
+  "authUserNotFound": "No account found with this email.",
+  "authWrongPassword": "Incorrect password.",
+  "authUserDisabled": "This account has been disabled.",
+  "authTooManyRequests": "Too many attempts. Try again later.",
+  "authOperationNotAllowed": "Operation not allowed.",
+  "authSignInCanceled": "Sign-in was canceled.",
+  "authGoogleFailed": "Google sign-in failed. Check your configuration.",
+  "authNetworkError": "Network error. Check your internet connection.",
+  "authGoogleError": "Error while signing in with Google.",
+  "authAccountExistsDifferentCredential": "An account already exists with this email but a different sign-in method.",
+  "authInvalidCredential": "The credentials provided are invalid.",
+  "authUnknownError": "An unexpected error occurred.",
+  "authEmailInUse": "This email is already in use.",
+  "authWeakPassword": "The password is too weak.",
+  "onboarding1Title": "Welcome to LexiArabia",
+  "onboarding1Subtitle": "Your mission",
+  "onboarding1Description": "Learn Arabic by mastering the most frequent words of the Quran. Our goal: help you understand 80% of the sacred text.",
+  "onboarding1Feature1": "Master the essential words of the Quran",
+  "onboarding1Feature2": "Learn at your own pace with progressive lessons",
+  "onboarding1Feature3": "Track your progress in real time",
+  "onboarding1Feature4": "Earn rewards by completing challenges",
+  "onboarding2Title": "How does it work?",
+  "onboarding2Subtitle": "Learn 80% of the words of the Quran",
+  "onboarding2Description": "By learning only the 200 most frequent words of the Quran, you can understand about 80% of the text. That's our proven method.",
+  "onboarding2Feature1": "200 words = 80% understanding",
+  "onboarding2Feature2": "Lessons organized by theme",
+  "onboarding2Feature3": "Varied interactive exercises",
+  "onboarding2Feature4": "Spaced repetition for lasting memory",
+  "onboarding3Title": "Progress and rewards",
+  "onboarding3Subtitle": "Stay motivated",
+  "onboarding3Description": "Track your progress, unlock badges and celebrate every step of your learning. Each completed lesson brings you closer to your goal.",
+  "onboarding3Feature1": "Detailed progress tracking",
+  "onboarding3Feature2": "Badges and rewards to unlock",
+  "onboarding3Feature3": "Statistics on your performance",
+  "onboarding3Feature4": "Daily reminders to keep your rhythm",
+  "skip": "Skip",
+  "start": "Start",
+  "defaultUserName": "Learner",
+  "level": "Level",
+  "daysCount": "{count, plural, =1{1 day} other{{count} days}}",
+  "@daysCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "percentCompleted": "{percent}% completed",
+  "@percentCompleted": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "noLessonsAvailable": "No lessons available",
+  "achievements": "Achievements",
+  "achFirstLesson": "First lesson",
+  "ach100Xp": "100 XP",
+  "ach7DayStreak": "7-day streak",
+  "achQuickLearner": "Quick learner",
+  "achExpert": "Expert"
 }

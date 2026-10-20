@@ -32,10 +32,6 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBackgroundColor =
-        backgroundColor ??
-        (isOutlined ? Colors.transparent : AppTheme.primaryColor);
-
     final effectiveTextColor =
         textColor ??
         (isOutlined ? AppTheme.primaryColor : AppTheme.textPrimaryColor);
@@ -44,7 +40,8 @@ class CustomButton extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        gradient: isOutlined ? null : AppTheme.buttonGradient,
+        color: isOutlined ? Colors.transparent : backgroundColor,
+        gradient: (isOutlined || backgroundColor != null) ? null : AppTheme.buttonGradient,
         borderRadius: BorderRadius.circular(borderRadius),
         border: isOutlined
             ? Border.all(color: AppTheme.primaryColor, width: 2)

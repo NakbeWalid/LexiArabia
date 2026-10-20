@@ -1,5 +1,7 @@
 # Explication Complète de l'Algorithme FSRS
 
+> Implémentation actuelle : FSRS-4.5 avec les paramètres officiels par défaut (voir `fsrs_algorithm.dart`). Les formules détaillées plus bas peuvent différer de cette implémentation.
+
 ## Vue d'Ensemble
 
 FSRS (Free Spaced Repetition Scheduler) est un algorithme moderne de répétition espacée basé sur des modèles d'apprentissage automatique. Contrairement à SM-2 (l'algorithme classique d'Anki), FSRS utilise 17 paramètres optimisés par machine learning pour adapter l'intervalle de révision à chaque carte individuelle.
@@ -25,7 +27,7 @@ L'état d'une carte peut être l'un des quatre suivants :
 
 ### 4. **Échecs (Lapses)**
 - **Définition** : Nombre d'oublis historiques d'une carte (lapses).
-- **Note (dans cette app)** : L'utilisateur ne peut pas passer au prochain exercice tant qu'il n'a pas réussi, donc on ne produit pas de réponse "AGAIN" (`quality=0`). Le champ `lapses` peut exister pour compatibilité, mais n'est pas incrémenté par les reviews actuelles.
+- **Note (dans cette app)** : la note est calculée automatiquement. Une erreur avant la bonne réponse donne "AGAIN" (`quality=0`) ; sur une carte en révision, cela incrémente `lapses` et la carte repasse en réapprentissage.
 
 ### 5. **Jours Écoulés (Elapsed Days)**
 - **Définition** : Nombre de jours réels depuis la dernière révision.

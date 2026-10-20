@@ -20,11 +20,9 @@ class SRSExercise {
   final double
   stability; // Stabilité : temps jusqu'à 90% de probabilité de rétention (FSRS)
   final double
-  difficulty; // Difficulté : 0-10, ajustée dynamiquement selon les performances (FSRS)
+  difficulty; // Difficulté : 1-10, ajustée dynamiquement selon les performances (FSRS)
   final int state; // État FSRS: 0=New, 1=Learning, 2=Review, 3=Relearning
-  // Nombre total d'oublis historiques (lapses). Dans ce projet, on ne génère plus "AGAIN"(0),
-  // donc ce compteur n'augmente pas automatiquement via les reviews actuelles.
-  final int lapses;
+  final int lapses; // Nombre d'oublis (AGAIN alors que la carte était en REVIEW)
   final DateTime dueDate; // Date/heure de la prochaine révision
   final int elapsedDays; // Jours écoulés depuis la dernière révision (FSRS)
 
@@ -42,7 +40,7 @@ class SRSExercise {
   final int correctReviews;
   final int incorrectReviews;
   final int hardReviews;
-  final int? lastQuality; // 1=HARD, 2=GOOD, 3=EASY (0=AGAIN non utilisé)
+  final int? lastQuality; // 0=AGAIN, 1=HARD, 2=GOOD, 3=EASY
 
   SRSExercise({
     required this.exerciseId,

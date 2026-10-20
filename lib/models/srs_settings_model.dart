@@ -1,3 +1,5 @@
+import 'package:dualingocoran/services/fsrs_algorithm.dart';
+
 /// Modèle pour les paramètres FSRS d'un utilisateur
 ///
 /// Utilise l'algorithme FSRS (Free Spaced Repetition Scheduler), un algorithme moderne
@@ -26,8 +28,13 @@ class SRSSettings {
   /// Créer SRSSettings depuis les données Firestore
   factory SRSSettings.fromMap(Map<String, dynamic> data) {
     // Paramètres FSRS
+    // Les paramètres stockés ne sont valides que s'ils ont été écrits pour
+    // la version actuelle de l'algorithme (les anciens étaient incorrects).
     List<double> fsrsParams = [];
-    if (data['fsrsParams'] != null && data['fsrsParams'] is List) {
+    if (data['fsrsVersion'] == FSRSAlgorithm.version &&
+        data['fsrsParams'] is List &&
+        (data['fsrsParams'] as List).length ==
+            FSRSAlgorithm.defaultParams.length) {
       fsrsParams = (data['fsrsParams'] as List)
           .map((e) => (e as num).toDouble())
           .toList();
@@ -50,33 +57,14 @@ class SRSSettings {
   }
 
   /// Obtenir les paramètres FSRS par défaut
-  static List<double> _getDefaultFSRSParams() {
-    // Paramètres FSRS optimisés par défaut
-    return [
-      0.4,
-      1.6,
-      10.0,
-      5.8,
-      4.93,
-      0.94,
-      0.86,
-      0.01,
-      1.49,
-      0.14,
-      0.94,
-      2.18,
-      0.05,
-      0.34,
-      1.26,
-      0.29,
-      2.61,
-    ];
-  }
+  static List<double> _getDefaultFSRSParams() =>
+      FSRSAlgorithm.getDefaultParams();
 
   /// Convertir en Map pour Firestore
   Map<String, dynamic> toMap() {
     return {
       'algorithm': 'fsrs', // Toujours FSRS maintenant
+      'fsrsVersion': FSRSAlgorithm.version,
       'fsrsParams': fsrsParams,
       'requestRetention': requestRetention,
       'newExercisesPerDay': newExercisesPerDay,

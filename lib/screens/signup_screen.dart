@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/user_provider.dart';
 import '../main.dart';
-import 'package:dualingocoran/l10n/app_localizations.dart';
+import '../widgets/google_logo_icon.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'login_screen.dart';
 
@@ -72,7 +73,7 @@ class _SignupScreenState extends State<SignupScreen> {
       } catch (e) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
+          _errorMessage = AppLocalizations.of(context)!.errorGeneric;
         });
       }
     }
@@ -110,7 +111,9 @@ class _SignupScreenState extends State<SignupScreen> {
     } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Une erreur est survenue: ${e.toString()}';
+        _errorMessage = AppLocalizations.of(
+          context,
+        )!.errorWithDetails(e.toString());
       });
       print('❌ Erreur inattendue: $e');
       print('Stack trace: $stackTrace');
@@ -120,29 +123,31 @@ class _SignupScreenState extends State<SignupScreen> {
   String _getErrorMessage(String code) {
     switch (code) {
       case 'email-already-in-use':
-        return 'Cet email est déjà utilisé.';
+        return AppLocalizations.of(context)!.authEmailInUse;
       case 'invalid-email':
-        return 'Email invalide.';
+        return AppLocalizations.of(context)!.invalidEmail;
       case 'weak-password':
-        return 'Le mot de passe est trop faible.';
+        return AppLocalizations.of(context)!.authWeakPassword;
       case 'operation-not-allowed':
-        return 'Opération non autorisée.';
+        return AppLocalizations.of(context)!.authOperationNotAllowed;
       case 'sign_in_canceled':
-        return 'La connexion a été annulée.';
+        return AppLocalizations.of(context)!.authSignInCanceled;
       case 'sign_in_failed':
-        return 'Échec de la connexion Google. Vérifiez votre configuration.';
+        return AppLocalizations.of(context)!.authGoogleFailed;
       case 'network_error':
-        return 'Erreur de réseau. Vérifiez votre connexion internet.';
+        return AppLocalizations.of(context)!.authNetworkError;
       case 'google_sign_in_error':
-        return 'Erreur lors de la connexion Google.';
+        return AppLocalizations.of(context)!.authGoogleError;
       case 'account-exists-with-different-credential':
-        return 'Un compte existe déjà avec cet email mais avec un autre moyen de connexion.';
+        return AppLocalizations.of(
+          context,
+        )!.authAccountExistsDifferentCredential;
       case 'invalid-credential':
-        return 'Les identifiants fournis sont invalides.';
+        return AppLocalizations.of(context)!.authInvalidCredential;
       case 'unknown_error':
-        return 'Une erreur inattendue s\'est produite.';
+        return AppLocalizations.of(context)!.authUnknownError;
       default:
-        return 'Une erreur est survenue: $code';
+        return AppLocalizations.of(context)!.errorWithDetails(code);
     }
   }
 
@@ -175,7 +180,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ).animate().scale(delay: 100.ms, duration: 600.ms),
                     SizedBox(height: 16),
                     Text(
-                      'Créer un compte',
+                      AppLocalizations.of(context)!.signupTitle,
                       style: GoogleFonts.poppins(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -185,7 +190,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ).animate().fadeIn(delay: 200.ms),
                     SizedBox(height: 8),
                     Text(
-                      'Rejoignez LexiArabia',
+                      AppLocalizations.of(context)!.signupWelcome,
                       style: GoogleFonts.poppins(
                         fontSize: 16,
                         color: Colors.white70,
@@ -216,8 +221,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       textCapitalization: TextCapitalization.words,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: 'Nom',
-                        hintText: 'Votre nom',
+                        labelText: AppLocalizations.of(context)!.nameLabel,
+                        hintText: AppLocalizations.of(context)!.nameHint,
                         prefixIcon: Icon(Icons.person_outline),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -227,10 +232,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer votre nom';
+                          return AppLocalizations.of(context)!.enterName;
                         }
                         if (value.length < 2) {
-                          return 'Le nom doit contenir au moins 2 caractères';
+                          return AppLocalizations.of(context)!.nameTooShort;
                         }
                         return null;
                       },
@@ -243,8 +248,8 @@ class _SignupScreenState extends State<SignupScreen> {
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: 'Email',
-                        hintText: 'exemple@email.com',
+                        labelText: AppLocalizations.of(context)!.emailLabel,
+                        hintText: AppLocalizations.of(context)!.emailHint,
                         prefixIcon: Icon(Icons.email_outlined),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -254,10 +259,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer votre email';
+                          return AppLocalizations.of(context)!.enterEmail;
                         }
                         if (!value.contains('@')) {
-                          return 'Email invalide';
+                          return AppLocalizations.of(context)!.invalidEmail;
                         }
                         return null;
                       },
@@ -270,7 +275,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: 'Mot de passe',
+                        labelText: AppLocalizations.of(context)!.passwordLabel,
                         prefixIcon: Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -292,10 +297,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer un mot de passe';
+                          return AppLocalizations.of(context)!.enterNewPassword;
                         }
                         if (value.length < 6) {
-                          return 'Le mot de passe doit contenir au moins 6 caractères';
+                          return AppLocalizations.of(context)!.passwordTooShort;
                         }
                         return null;
                       },
@@ -309,7 +314,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       textInputAction: TextInputAction.done,
                       onFieldSubmitted: (_) => _signUpWithEmail(),
                       decoration: InputDecoration(
-                        labelText: 'Confirmer le mot de passe',
+                        labelText: AppLocalizations.of(
+                          context,
+                        )!.confirmPasswordLabel,
                         prefixIcon: Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -332,10 +339,12 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
-                          return 'Veuillez confirmer le mot de passe';
+                          return AppLocalizations.of(context)!.confirmPassword;
                         }
                         if (value != _passwordController.text) {
-                          return 'Les mots de passe ne correspondent pas';
+                          return AppLocalizations.of(
+                            context,
+                          )!.passwordsDontMatch;
                         }
                         return null;
                       },
@@ -365,7 +374,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               ),
                             )
                           : Text(
-                              'Créer mon compte',
+                              AppLocalizations.of(context)!.createMyAccount,
                               style: GoogleFonts.poppins(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -408,20 +417,10 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       child: OutlinedButton.icon(
                         onPressed: _isLoading ? null : _signUpWithGoogle,
-                        icon: Image.asset(
-                          'assets/google_logo.png',
-                          height: 24,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(
-                              Icons.g_mobiledata,
-                              size: 24,
-                              color: Colors.grey.shade700,
-                            );
-                          },
-                        ),
+                        icon: const GoogleLogoIcon(size: 22),
                         label: Flexible(
                           child: Text(
-                            'Continuer avec Google',
+                            AppLocalizations.of(context)!.continueWithGoogle,
                             style: GoogleFonts.poppins(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -452,7 +451,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Déjà un compte ? ',
+                          AppLocalizations.of(context)!.alreadyHaveAccount,
                           style: GoogleFonts.poppins(color: Colors.white70),
                         ),
                         TextButton(
@@ -465,7 +464,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             );
                           },
                           child: Text(
-                            'Se connecter',
+                            AppLocalizations.of(context)!.signIn,
                             style: GoogleFonts.poppins(
                               color: Colors.blue.shade300,
                               fontWeight: FontWeight.w600,

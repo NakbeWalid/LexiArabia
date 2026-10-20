@@ -80,9 +80,21 @@ class SRSService {
     required Exercise exercise,
   }) async {
     try {
-      // Générer un ID unique pour l'exercice SRS
-      final exerciseId =
-          '${lessonId}_${exerciseIndex}_${DateTime.now().millisecondsSinceEpoch}';
+      // Générer un ID déterministe pour éviter les doublons lors de la répétition d'une leçon
+      final cleanLessonId = lessonId.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+      final exerciseId = '${cleanLessonId}_$exerciseIndex';
+
+      final docRef = _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('srsExercises')
+          .doc(exerciseId);
+
+      final docSnapshot = await docRef.get();
+      if (docSnapshot.exists) {
+        print('ℹ️ Exercice SRS déjà existant réutilisé: $exerciseId');
+        return exerciseId;
+      }
 
       final now = DateTime.now();
       // Note: getSettings() initialise les paramètres par défaut si nécessaire
@@ -127,8 +139,8 @@ class SRSService {
         exerciseIndex: exerciseIndex,
         exerciseType: exercise.type,
         interval: 0.0, // Sera calculé par FSRS
-        stability: 0.4, // Stabilité initiale FSRS
-        difficulty: 5.0, // Difficulté initiale FSRS (milieu de l'échelle 0-10)
+        stability: 0.4, // Remplacée par FSRS à la première révision
+        difficulty: 5.0, // Remplacée par FSRS à la première révision
         state: 0, // NEW
         lapses: 0,
         dueDate: now, // À réviser immédiatement
@@ -145,12 +157,7 @@ class SRSService {
       );
 
       // Sauvegarder dans Firestore
-      await _firestore
-          .collection('users')
-          .doc(userId)
-          .collection('srsExercises')
-          .doc(exerciseId)
-          .set(srsExercise.toMap());
+      await docRef.set(srsExercise.toMap());
 
       print('✅ Exercice SRS créé: $exerciseId');
       return exerciseId;
@@ -280,19 +287,33 @@ class SRSService {
     }
   }
 
+  // Seuils (secondes) pour la notation automatique
+  static const int _fastAnswerSeconds = 10;
+  static const int _slowAnswerSeconds = 30;
+
+  /// Notation automatique (0=AGAIN, 1=HARD, 2=GOOD, 3=EASY) à partir des
+  /// erreurs commises avant la bonne réponse et du temps de réponse.
+  /// Une seule erreur signifie que l'élément n'était pas su → AGAIN.
+  static int qualityFromPerformance({
+    required int mistakes,
+    required int timeInSeconds,
+  }) {
+    if (mistakes > 0) return FSRSAlgorithm.again;
+    if (timeInSeconds <= _fastAnswerSeconds) return FSRSAlgorithm.easy;
+    if (timeInSeconds <= _slowAnswerSeconds) return FSRSAlgorithm.good;
+    return FSRSAlgorithm.hard;
+  }
+
   /// Enregistrer une révision et mettre à jour l'exercice avec l'algorithme FSRS
   static Future<void> recordReview({
     required String userId,
     required String exerciseId,
-    required int quality, // 1=HARD, 2=GOOD, 3=EASY (0=AGAIN n'est plus utilisé)
+    required int quality, // 0=AGAIN, 1=HARD, 2=GOOD, 3=EASY
     int? responseTime,
   }) async {
     try {
       final settings = await getSettings(userId);
-
-      // Sécurité: dans ce projet, on ne veut plus de quality=0 (AGAIN).
-      // On clamp systématiquement à 1..3 pour éviter des données incohérentes.
-      final clampedQuality = quality.clamp(1, 3);
+      final clampedQuality = quality.clamp(FSRSAlgorithm.again, FSRSAlgorithm.easy);
 
       // Récupérer l'exercice actuel
       final exerciseDoc = await _firestore
@@ -307,38 +328,31 @@ class SRSService {
       }
 
       final currentExercise = SRSExercise.fromMap(exerciseDoc.data()!);
-
-      // Sauvegarder les valeurs avant pour les logs
-      final intervalBefore = currentExercise.interval;
-      final stabilityBefore = currentExercise.stability;
-      final difficultyBefore = currentExercise.difficulty;
-      final stateBefore = currentExercise.state;
+      final now = DateTime.now();
 
       // Calculer le nouvel état avec l'algorithme FSRS
-      final updatedExercise = _calculateFSRS(
-        currentExercise: currentExercise,
+      final updatedExercise = FSRSAlgorithm.calculateNext(
+        current: currentExercise,
         quality: clampedQuality,
-        settings: settings,
-        responseTime: responseTime,
+        params: settings.fsrsParams,
+        requestRetention: settings.requestRetention,
+        now: now,
       );
 
       // Mettre à jour les statistiques (agrégées dans l'exercice)
       final updatedStats = updatedExercise.copyWith(
         totalReviews: currentExercise.totalReviews + 1,
-        correctReviews: clampedQuality >= 2
+        correctReviews: clampedQuality >= FSRSAlgorithm.hard
             ? currentExercise.correctReviews + 1
             : currentExercise.correctReviews,
-        // "incorrectReviews" était basé sur AGAIN(0). Comme on ne génère plus 0,
-        // ce compteur n'augmente plus via recordReview.
-        incorrectReviews: clampedQuality == 0
+        incorrectReviews: clampedQuality == FSRSAlgorithm.again
             ? currentExercise.incorrectReviews + 1
             : currentExercise.incorrectReviews,
-        hardReviews: clampedQuality == 1
+        hardReviews: clampedQuality == FSRSAlgorithm.hard
             ? currentExercise.hardReviews + 1
             : currentExercise.hardReviews,
         lastQuality: clampedQuality,
-        lastReviewed: DateTime.now(),
-        elapsedDays: 0, // Réinitialiser après révision
+        lastReviewed: now,
       );
 
       // Sauvegarder dans Firestore
@@ -349,53 +363,15 @@ class SRSService {
           .doc(exerciseId)
           .update(updatedStats.toMap());
 
-      // Obtenir le label de qualité pour le log
-      final qualityLabel = _getQualityLabel(clampedQuality);
-      print('✅ Révision FSRS enregistrée: $qualityLabel pour $exerciseId');
       print(
-        '   Intervalle: ${intervalBefore.toStringAsFixed(1)} → ${updatedExercise.interval.toStringAsFixed(1)} jours',
-      );
-      print(
-        '   Stabilité: ${stabilityBefore.toStringAsFixed(2)} → ${updatedExercise.stability.toStringAsFixed(2)} jours',
-      );
-      print(
-        '   Difficulté: ${difficultyBefore.toStringAsFixed(2)} → ${updatedExercise.difficulty.toStringAsFixed(2)}',
-      );
-      print(
-        '   État: $stateBefore → ${updatedExercise.state} (${updatedExercise.status})',
+        '✅ Révision FSRS: ${_getQualityLabel(clampedQuality)} pour $exerciseId '
+        '(S ${currentExercise.stability.toStringAsFixed(2)} → ${updatedExercise.stability.toStringAsFixed(2)}, '
+        'état ${currentExercise.state} → ${updatedExercise.state}, prochaine: ${updatedExercise.dueDate})',
       );
     } catch (e) {
-      print('❌ Erreur lors de l\'enregistrement de la révision: $e');
+      print("❌ Erreur lors de l'enregistrement de la révision: $e");
       rethrow;
     }
-  }
-
-  /// Calculer le nouvel état avec l'algorithme FSRS
-  static SRSExercise _calculateFSRS({
-    required SRSExercise currentExercise,
-    required int quality,
-    required SRSSettings settings,
-    int? responseTime,
-  }) {
-    // Calculer elapsedDays depuis la dernière révision
-    int elapsedDays = currentExercise.elapsedDays;
-    if (elapsedDays == 0 && currentExercise.lastReviewed != null) {
-      elapsedDays = DateTime.now()
-          .difference(currentExercise.lastReviewed!)
-          .inDays;
-    } else if (elapsedDays == 0 && currentExercise.lastReviewed == null) {
-      // Pour une nouvelle carte, calculer depuis la création
-      elapsedDays = DateTime.now().difference(currentExercise.createdAt).inDays;
-    }
-    elapsedDays = elapsedDays.clamp(0, 365); // Limiter à 1 an max
-
-    // Utiliser FSRS Algorithm
-    return FSRSAlgorithm.calculateNext(
-      current: currentExercise,
-      quality: quality,
-      params: settings.fsrsParams,
-      elapsedDays: elapsedDays,
-    );
   }
 
   /// Obtenir les statistiques SRS d'un utilisateur
@@ -456,6 +432,8 @@ class SRSService {
   /// Obtenir le label de qualité depuis un entier
   static String _getQualityLabel(int quality) {
     switch (quality) {
+      case 0:
+        return 'AGAIN';
       case 1:
         return 'HARD';
       case 2:

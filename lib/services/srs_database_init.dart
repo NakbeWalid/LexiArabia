@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dualingocoran/services/fsrs_algorithm.dart';
 
 /// Service pour initialiser les collections Firestore nécessaires au système SRS
 class SRSDatabaseInit {
@@ -30,25 +31,8 @@ class SRSDatabaseInit {
         'algorithm': 'fsrs',
 
         // Paramètres FSRS
-        'fsrsParams': [
-          0.4,
-          1.6,
-          10.0,
-          5.8,
-          4.93,
-          0.94,
-          0.86,
-          0.01,
-          1.49,
-          0.14,
-          0.94,
-          2.18,
-          0.05,
-          0.34,
-          1.26,
-          0.29,
-          2.61,
-        ],
+        'fsrsVersion': FSRSAlgorithm.version,
+        'fsrsParams': FSRSAlgorithm.getDefaultParams(),
         'requestRetention': 0.9, // 90% de rétention cible
         // Limites quotidiennes
         // Objectif UX: éviter la surcharge après une absence.

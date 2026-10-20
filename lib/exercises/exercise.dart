@@ -22,22 +22,49 @@ class Exercise {
 
   /// Parser les options (peut être une List ou une Map avec traductions)
   static List<String>? _parseOptions(dynamic optionsData) {
-    // Supporter uniquement les Maps de traduction pour de meilleures performances
-    if (optionsData is! Map) {
-      return null;
+    if (optionsData == null) return null;
+    if (optionsData is List) {
+      return optionsData.map((e) => e.toString()).toList();
     }
-
-    // C'est une Map de traductions, utiliser l'anglais comme fallback initial
-    final optionsMap = optionsData as Map<String, dynamic>;
-    if (optionsMap['en'] is List) {
-      return (optionsMap['en'] as List).map((e) => e.toString()).toList();
-    } else if (optionsMap['fr'] is List) {
-      return (optionsMap['fr'] as List).map((e) => e.toString()).toList();
-    } else if (optionsMap['ar'] is List) {
-      return (optionsMap['ar'] as List).map((e) => e.toString()).toList();
+    if (optionsData is Map) {
+      final optionsMap = optionsData as Map<String, dynamic>;
+      if (optionsMap['en'] is List) {
+        return (optionsMap['en'] as List).map((e) => e.toString()).toList();
+      } else if (optionsMap['fr'] is List) {
+        return (optionsMap['fr'] as List).map((e) => e.toString()).toList();
+      } else if (optionsMap['ar'] is List) {
+        return (optionsMap['ar'] as List).map((e) => e.toString()).toList();
+      }
     }
-
     return null;
+  }
+
+  /// Parser les paires (List de {from, to} ou Map clé → valeur)
+  static List<Map<String, dynamic>> _parsePairs(dynamic pairsData) {
+    if (pairsData is List) {
+      return pairsData
+          .where(
+            (pair) => pair is Map && pair['from'] != null && pair['to'] != null,
+          )
+          .map(
+            (pair) => <String, dynamic>{
+              'from': pair['from'].toString(),
+              'to': pair['to'].toString(),
+            },
+          )
+          .toList();
+    }
+    if (pairsData is Map) {
+      return pairsData.entries
+          .map(
+            (e) => <String, dynamic>{
+              'from': e.key.toString(),
+              'to': e.value.toString(),
+            },
+          )
+          .toList();
+    }
+    return [];
   }
 
   factory Exercise.fromJson(Map<String, dynamic> json) {
@@ -55,87 +82,85 @@ class Exercise {
       exerciseType = 'audio_choice';
     }
 
-    // Gestion des réponses (Map de traductions uniquement)
-    if (json['answer'] != null && json['answer'] is Map) {
-      final answerMap = json['answer'] as Map<String, dynamic>;
-      answer =
-          answerMap['en']?.toString() ??
-          answerMap['fr']?.toString() ??
-          answerMap['ar']?.toString() ??
-          answerMap.values.first?.toString() ??
-          '';
-    } else if (json['answer'] is bool) {
-      answer = json['answer'].toString();
-    } else if (json['correct_answer'] != null &&
-        json['correct_answer'] is Map) {
-      final answerMap = json['correct_answer'] as Map<String, dynamic>;
-      answer =
-          answerMap['en']?.toString() ??
-          answerMap['fr']?.toString() ??
-          answerMap['ar']?.toString() ??
-          answerMap.values.first?.toString() ??
-          '';
-    } else if (json['correct_answer'] is bool) {
-      answer = json['correct_answer'].toString();
+    // Gestion des réponses
+    if (json['answer'] != null) {
+      if (json['answer'] is Map) {
+        final answerMap = json['answer'] as Map<String, dynamic>;
+        answer =
+            answerMap['en']?.toString() ??
+            answerMap['fr']?.toString() ??
+            answerMap['ar']?.toString() ??
+            answerMap.values.first?.toString() ??
+            '';
+      } else {
+        answer = json['answer'].toString();
+      }
+    } else if (json['correct_answer'] != null) {
+      if (json['correct_answer'] is Map) {
+        final answerMap = json['correct_answer'] as Map<String, dynamic>;
+        answer =
+            answerMap['en']?.toString() ??
+            answerMap['fr']?.toString() ??
+            answerMap['ar']?.toString() ??
+            answerMap.values.first?.toString() ??
+            '';
+      } else {
+        answer = json['correct_answer'].toString();
+      }
     }
 
-    // Gestion de la question/instruction (Map de traductions uniquement)
+    // Gestion de la question/instruction
     String question = '';
-    if (json['question'] != null && json['question'] is Map) {
-      final questionMap = json['question'] as Map<String, dynamic>;
-      question =
-          questionMap['en']?.toString() ??
-          questionMap['fr']?.toString() ??
-          questionMap['ar']?.toString() ??
-          questionMap.values.first?.toString() ??
-          '';
-    } else if (json['instruction'] != null && json['instruction'] is Map) {
-      final instructionMap = json['instruction'] as Map<String, dynamic>;
-      question =
-          instructionMap['en']?.toString() ??
-          instructionMap['fr']?.toString() ??
-          instructionMap['ar']?.toString() ??
-          instructionMap.values.first?.toString() ??
-          '';
+    if (json['question'] != null) {
+      if (json['question'] is Map) {
+        final questionMap = json['question'] as Map<String, dynamic>;
+        question =
+            questionMap['en']?.toString() ??
+            questionMap['fr']?.toString() ??
+            questionMap['ar']?.toString() ??
+            questionMap.values.first?.toString() ??
+            '';
+      } else {
+        question = json['question'].toString();
+      }
+    } else if (json['instruction'] != null) {
+      if (json['instruction'] is Map) {
+        final instructionMap = json['instruction'] as Map<String, dynamic>;
+        question =
+            instructionMap['en']?.toString() ??
+            instructionMap['fr']?.toString() ??
+            instructionMap['ar']?.toString() ??
+            instructionMap.values.first?.toString() ??
+            '';
+      } else {
+        question = json['instruction'].toString();
+      }
     }
 
     // Gestion des pairs pour drag_and_drop et pairs
+    // Deux formats acceptés :
+    // - Liste : [{"from": "هُمَا", "to": "They two"}, ...]
+    // - Map   : {"هُمَا": "They two", ...}
     if ((exerciseType == 'drag_drop' || exerciseType == 'pairs') &&
         json['pairs'] != null) {
-      print('Processing pairs exercise: $exerciseType');
-      print('Pairs data: ${json['pairs']}');
-      if (json['pairs'] is List) {
-        // Nouvelle structure: pairs est un tableau d'objets avec from et to
-        List<dynamic> pairsList = json['pairs'] as List;
-        print('Pairs is List with ${pairsList.length} items');
-        dragDropPairs = pairsList
-            .where(
-              (pair) =>
-                  pair is Map && pair['from'] != null && pair['to'] != null,
-            )
-            .map(
-              (pair) => {
-                'from': pair['from'].toString(),
-                'to': pair['to'].toString(),
-              },
-            )
-            .toList();
-        print('Processed dragDropPairs: $dragDropPairs');
-      } else if (json['pairs'] is Map) {
-        // Ancienne structure: pairs est un Map
-        Map<String, dynamic> pairs = json['pairs'] as Map<String, dynamic>;
-        print('Pairs is Map');
-        dragDropPairs = pairs.entries
-            .map((e) => {'term': e.key, 'match': e.value.toString()})
-            .toList();
-        print('Processed dragDropPairs: $dragDropPairs');
+      dragDropPairs = _parsePairs(json['pairs']);
+
+      // Un "drag_drop" qui ne contient que des paires (sans réponse à
+      // placer dans une phrase) est en réalité un exercice d'association.
+      if (exerciseType == 'drag_drop' &&
+          answer == null &&
+          dragDropPairs.isNotEmpty) {
+        exerciseType = 'pairs';
       }
     }
+
+    // "choices" est un alias de "options" (format drag_drop avec "sentence")
+    final optionsData = json['options'] ?? json['choices'];
 
     return Exercise(
       type: exerciseType,
       question: question,
-      options: json['options'] != null ? _parseOptions(json['options']) : null,
+      options: optionsData != null ? _parseOptions(optionsData) : null,
       answer: answer,
       audioUrl: json['audioUrl'],
       dragDropPairs: dragDropPairs,
@@ -206,8 +231,12 @@ class Exercise {
       return dragDropPairs;
     }
 
+    // Format Map ({"هُمَا": "They two"}) : pas de traductions par paire
+    final rawPairs = rawData!['pairs'];
+    if (rawPairs is! List) return dragDropPairs;
+
     // Si les pairs contiennent des traductions
-    final pairs = rawData!['pairs'] as List;
+    final pairs = rawPairs;
     final translatedPairs = <Map<String, dynamic>>[];
 
     for (var pair in pairs) {

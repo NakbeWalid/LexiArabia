@@ -24,16 +24,18 @@ service cloud.firestore {
       }
     }
     
-    // Règles pour les leçons (lecture publique, écriture admin)
+    // Leçons : lecture publique, écriture interdite depuis l'app.
+    // Le contenu se modifie via la console Firebase ou un script Admin SDK
+    // (qui contourne ces règles).
     match /lessons/{lessonId} {
       allow read: if true;
-      allow write: if request.auth != null; // À ajuster selon vos besoins
+      allow write: if false;
     }
     
-    // Règles pour les achievements (lecture publique)
+    // Achievements : lecture publique, écriture réservée à l'admin
     match /achievements/{achievementId} {
       allow read: if true;
-      allow write: if request.auth != null; // À ajuster selon vos besoins
+      allow write: if false;
     }
   }
 }

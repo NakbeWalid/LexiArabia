@@ -1,595 +1,255 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
+import 'package:dualingocoran/exercises/exercise_view.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
+import 'package:dualingocoran/services/pronunciation_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../utils/arabic_text_style.dart';
+import '../widgets/smart_question_card.dart';
 
 class AudioExercise extends StatefulWidget {
   final Exercise exercise;
-  final Function(bool) onNext;
+  final AnswerCallback onAnswered;
 
   const AudioExercise({
-    required this.exercise,
     super.key,
-    required this.onNext,
+    required this.exercise,
+    required this.onAnswered,
   });
 
   @override
   State<AudioExercise> createState() => _AudioExerciseState();
 }
 
-class _AudioExerciseState extends State<AudioExercise>
-    with TickerProviderStateMixin {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+class _AudioExerciseState extends State<AudioExercise> {
   String? selectedOption;
-  bool showFeedback = false;
-  bool isPlaying = false;
-  late AnimationController _controller;
-  late AnimationController _audioController;
-  late AnimationController _pulseController;
+  bool _audioUnavailable = false;
+  bool get _answered => selectedOption != null;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _audioController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    _controller.forward();
-
-    // Listen to audio player state
-    _audioPlayer.onPlayerStateChanged.listen((state) {
-      if (mounted) {
-        setState(() {
-          isPlaying = state == PlayerState.playing;
-        });
-      }
-      if (mounted) {
-        if (state == PlayerState.playing) {
-          _audioController.repeat();
-        } else {
-          _audioController.stop();
-        }
-      }
-    });
+    // Comme Duolingo : l'audio se lance automatiquement à l'affichage
+    WidgetsBinding.instance.addPostFrameCallback((_) => _playAudio());
   }
 
-  @override
-  void didUpdateWidget(covariant AudioExercise oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.exercise != widget.exercise) {
-      setState(() {
-        selectedOption = null;
-        showFeedback = false;
-      });
-      _controller.reset();
-      _pulseController.reset();
-      _controller.forward();
+  Future<void> _playAudio() async {
+    HapticFeedback.selectionClick();
+    final played = await PronunciationService.speak(
+      audioUrl: widget.exercise.audioUrl,
+      text: widget.exercise.answer,
+    );
+    if (mounted && played == _audioUnavailable) {
+      setState(() => _audioUnavailable = !played);
     }
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _audioController.dispose();
-    _pulseController.dispose();
-    _audioPlayer.dispose();
-    super.dispose();
-  }
-
-  void checkAnswer(String option) async {
-    setState(() {
-      selectedOption = option;
-      showFeedback = true;
-    });
-
-    final isCorrect = option == widget.exercise.answer;
-
-    // Audio et haptic feedback
-    if (isCorrect) {
-      HapticFeedback.lightImpact();
-      _pulseController.forward();
-    } else {
-      HapticFeedback.mediumImpact();
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isCorrect ? Icons.check_circle : Icons.cancel,
-              color: Colors.white,
-            ),
-            SizedBox(width: 8),
-            Text(
-              isCorrect ? "Perfect! ✨" : "Try listening again! 🎧",
-              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-        backgroundColor: isCorrect
-            ? Colors.green.shade600
-            : Colors.red.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-
-    // Seulement passer à l'exercice suivant si la réponse est correcte
-    if (isCorrect) {
-      Future.delayed(const Duration(milliseconds: 800), () => widget.onNext(isCorrect));
-    } else {
-      // Réinitialiser après un délai pour permettre de réessayer
-      Future.delayed(const Duration(milliseconds: 1000), () {
-        if (mounted) {
-          setState(() {
-            selectedOption = null;
-            showFeedback = false;
-          });
-        }
-      });
-    }
-  }
-
-  void playAudio() async {
-    try {
-      if (widget.exercise.audioUrl != null) {
-        print("🔍 Playing audio: ${widget.exercise.audioUrl}");
-
-        // Check if audio is already playing
-        if (_audioPlayer.state == PlayerState.playing) {
-          await _audioPlayer.stop();
-        }
-
-        // Normalize the audio path - remove 'assets/' prefix if present
-        String audioPath = widget.exercise.audioUrl!;
-        if (audioPath.startsWith('assets/')) {
-          audioPath = audioPath.substring(7); // Remove 'assets/' prefix
-        }
-
-        print("🎵 Normalized audio path: $audioPath");
-        await _audioPlayer.play(AssetSource(audioPath));
-        HapticFeedback.selectionClick();
-      } else {
-        print("⚠️ audioUrl is null");
-      }
-    } catch (e) {
-      print("❌ Error playing audio: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error, color: Colors.white),
-              SizedBox(width: 8),
-              Expanded(child: Text("Erreur: $e", style: GoogleFonts.poppins())),
-            ],
-          ),
-          backgroundColor: Colors.red.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
+  void _checkAnswer(String option) {
+    if (_answered) return;
+    setState(() => selectedOption = option);
+    widget.onAnswered(option == widget.exercise.answer);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Check if we have valid exercise data
-    // Un exercice est valide s'il a des options OU des pairs
-    bool hasValidData =
-        (widget.exercise.options != null &&
-            widget.exercise.options!.isNotEmpty) ||
-        (widget.exercise.dragDropPairs != null &&
-            widget.exercise.dragDropPairs!.isNotEmpty);
+    final l10n = AppLocalizations.of(context)!;
+    final options = widget.exercise.options ?? [];
 
-    // Debug: afficher les données disponibles
-    print('🔍 Exercise Type: ${widget.exercise.type}');
-    print('🔍 Options: ${widget.exercise.options?.length ?? 0}');
-    print('🔍 DragDropPairs: ${widget.exercise.dragDropPairs?.length ?? 0}');
-    print('🔍 Has Valid Data: $hasValidData');
-
-    // Pour les exercices drag_drop, on peut aussi accepter s'il n'y a pas d'options
-    // car ils utilisent dragDropPairs
-    if (widget.exercise.type == 'drag_drop' &&
-        widget.exercise.options == null &&
-        widget.exercise.dragDropPairs != null &&
-        widget.exercise.dragDropPairs!.isNotEmpty) {
-      hasValidData = true;
-      print('✅ Drag & Drop exercise validated with pairs');
-    }
-
-    if (!hasValidData) {
-      return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.white70),
-                SizedBox(height: 16),
-                Text(
-                  "No valid exercise data available",
-                  style: GoogleFonts.poppins(fontSize: 18, color: Colors.white),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  "Type: ${widget.exercise.type}",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-                Text(
-                  "Options: ${widget.exercise.options?.length ?? 0}",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-                Text(
-                  "Pairs: ${widget.exercise.dragDropPairs?.length ?? 0}",
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+    if (options.isEmpty) {
+      return ExerciseMessage(
+        icon: Icons.error_outline,
+        messageBuilder: (l10n) => l10n.invalidExerciseData,
       );
     }
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Container(
+      decoration: const BoxDecoration(gradient: kExerciseBackground),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.only(
+            top: kExerciseTopSpace,
+            bottom: kExerciseBottomSpace,
           ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: EdgeInsets.all(20),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-                      ),
-                      Expanded(
-                        child: Text(
-                          "Audio Exercise",
-                          style: GoogleFonts.poppins(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      SizedBox(width: 48), // Balance the back button
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
-
-                // Question
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 20),
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.2)),
-                  ),
-                  child: ArabicText(
-                    widget.exercise.question,
-                    style: ArabicTextStyle.smartStyle(
-                      widget.exercise.question,
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
+          child: Column(
+            children: [
+              SmartQuestionCard(
+                    question: widget.exercise.getTranslatedQuestion(context),
+                  )
+                  .animate()
+                  .fadeIn(delay: 200.ms)
+                  .scale(begin: const Offset(0.96, 0.96)),
+              const SizedBox(height: 25),
+              Text(
+                l10n.listenToAudio,
+                style: GoogleFonts.poppins(
+                  fontSize: 17,
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildPlayButton(l10n).animate().fadeIn(delay: 300.ms).scale(),
+              if (_audioUnavailable) ...[
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(
+                    l10n.audioUnavailable,
                     textAlign: TextAlign.center,
-                  ),
-                ).animate().fadeIn(delay: 300.ms).scale(),
-
-                SizedBox(height: 40),
-
-                // Audio Player
-                Container(
-                  margin: EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Listen to the audio",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          color: Colors.white.withOpacity(0.8),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SizedBox(height: 20),
-                      GestureDetector(
-                        onTap: playAudio,
-                        child:
-                            AnimatedContainer(
-                                  duration: Duration(milliseconds: 300),
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    gradient: LinearGradient(
-                                      colors: isPlaying
-                                          ? [
-                                              Colors.purple.shade400,
-                                              Colors.pink.shade400,
-                                            ]
-                                          : [
-                                              Colors.blue.shade400,
-                                              Colors.purple.shade400,
-                                            ],
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 20,
-                                        offset: Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: Icon(
-                                      isPlaying
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
-                                      size: 48,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                )
-                                .animate(target: isPlaying ? 1 : 0)
-                                .scale(
-                                  begin: Offset(1, 1),
-                                  end: Offset(1.1, 1.1),
-                                )
-                                .animate()
-                                .shimmer(
-                                  duration: isPlaying ? 2000.ms : 0.ms,
-                                  color: Colors.white.withOpacity(0.3),
-                                ),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(delay: 600.ms).scale(),
-
-                SizedBox(height: 40),
-
-                // Hint
-                if (!showFeedback)
-                  Text(
-                    "Choose what you heard",
                     style: GoogleFonts.poppins(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 16,
-                    ),
-                  ).animate().fadeIn(delay: 900.ms),
-
-                SizedBox(height: 20),
-
-                // Options Grid
-                SizedBox(
-                  height: 300, // Hauteur fixe pour permettre le scroll
-                  child: AnimationLimiter(
-                    child: GridView.builder(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 16,
-                        childAspectRatio: 1.2,
-                      ),
-                      itemCount: widget.exercise.options!.length,
-                      itemBuilder: (context, index) {
-                        final option = widget.exercise.options![index];
-                        final isSelected = selectedOption == option;
-                        final isCorrect = option == widget.exercise.answer;
-                        final showResult = showFeedback && isSelected;
-                        // Permettre de cliquer si pas de feedback, ou si feedback mais réponse incorrecte
-                        final canTap = !showFeedback || (showFeedback && selectedOption != null && selectedOption != widget.exercise.answer);
-
-                        return AnimationConfiguration.staggeredGrid(
-                          position: index,
-                          duration: const Duration(milliseconds: 600),
-                          columnCount: 2,
-                          child: ScaleAnimation(
-                            child: FadeInAnimation(
-                              child:
-                                  GestureDetector(
-                                        onTap: canTap ? () => checkAnswer(option) : null,
-                                        child: AnimatedContainer(
-                                          duration: Duration(milliseconds: 400),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: showResult
-                                                  ? isCorrect
-                                                        ? [
-                                                            Colors
-                                                                .green
-                                                                .shade400,
-                                                            Colors
-                                                                .green
-                                                                .shade600,
-                                                          ]
-                                                        : [
-                                                            Colors.red.shade400,
-                                                            Colors.red.shade600,
-                                                          ]
-                                                  : isSelected
-                                                  ? [
-                                                      Colors.blue.shade400,
-                                                      Colors.blue.shade600,
-                                                    ]
-                                                  : [
-                                                      Colors.white.withOpacity(
-                                                        0.1,
-                                                      ),
-                                                      Colors.white.withOpacity(
-                                                        0.05,
-                                                      ),
-                                                    ],
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(
-                                                  0.2,
-                                                ),
-                                                blurRadius: 12,
-                                                offset: Offset(0, 6),
-                                              ),
-                                            ],
-                                            border: isSelected
-                                                ? Border.all(
-                                                    color: showResult
-                                                        ? (isCorrect
-                                                              ? Colors
-                                                                    .green
-                                                                    .shade300
-                                                              : Colors
-                                                                    .red
-                                                                    .shade300)
-                                                        : Colors.blue.shade300,
-                                                    width: 3,
-                                                  )
-                                                : Border.all(
-                                                    color: Colors.white
-                                                        .withOpacity(0.2),
-                                                    width: 1,
-                                                  ),
-                                          ),
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              if (showResult)
-                                                Icon(
-                                                  isCorrect
-                                                      ? Icons.check_circle
-                                                      : Icons.cancel,
-                                                  color: Colors.white,
-                                                  size: 32,
-                                                )
-                                              else
-                                                Icon(
-                                                  Icons.hearing,
-                                                  color: isSelected
-                                                      ? Colors.white
-                                                      : Colors.white
-                                                            .withOpacity(0.7),
-                                                  size: 32,
-                                                ),
-                                              SizedBox(height: 12),
-                                              ArabicText(
-                                                option,
-                                                style:
-                                                    ArabicTextStyle.smartStyle(
-                                                      option,
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color:
-                                                          (showResult ||
-                                                              isSelected)
-                                                          ? Colors.white
-                                                          : Colors.white
-                                                                .withOpacity(
-                                                                  0.9,
-                                                                ),
-                                                    ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                              if (showResult && isCorrect)
-                                                Container(
-                                                  margin: EdgeInsets.only(
-                                                    top: 8,
-                                                  ),
-                                                  padding: EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 4,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white
-                                                        .withOpacity(0.2),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    "+10 XP",
-                                                    style: GoogleFonts.poppins(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      )
-                                      .animate(target: isSelected ? 1 : 0)
-                                      .scale(
-                                        begin: Offset(1, 1),
-                                        end: Offset(1.05, 1.05),
-                                      )
-                                      .animate(
-                                        target: showResult && isCorrect ? 1 : 0,
-                                      )
-                                      .shimmer(
-                                        duration: 1500.ms,
-                                        color: Colors.white.withOpacity(0.5),
-                                      ),
-                            ),
-                          ),
-                        );
-                      },
+                      fontSize: 13,
+                      color: Colors.orange.shade200,
                     ),
                   ),
                 ),
               ],
+              const SizedBox(height: 26),
+              Text(
+                l10n.chooseWhatYouHeard,
+                style: GoogleFonts.poppins(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: AnimationLimiter(
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 1.25,
+                        ),
+                    itemCount: options.length,
+                    itemBuilder: (context, index) =>
+                        AnimationConfiguration.staggeredGrid(
+                          position: index,
+                          duration: const Duration(milliseconds: 500),
+                          columnCount: 2,
+                          child: ScaleAnimation(
+                            child: FadeInAnimation(
+                              child: _buildOption(options[index]),
+                            ),
+                          ),
+                        ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlayButton(AppLocalizations l10n) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: PronunciationService.isPlaying,
+      builder: (context, isPlaying, _) => Semantics(
+        button: true,
+        label: l10n.playAudio,
+        child: GestureDetector(
+          onTap: _playAudio,
+          child: AnimatedScale(
+            scale: isPlaying ? 1.08 : 1.0,
+            duration: const Duration(milliseconds: 250),
+            child: Container(
+              width: 110,
+              height: 110,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: isPlaying
+                      ? [Colors.purple.shade400, Colors.pink.shade400]
+                      : [Colors.blue.shade400, Colors.purple.shade400],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                isPlaying ? Icons.graphic_eq_rounded : Icons.volume_up_rounded,
+                size: 48,
+                color: Colors.white,
+              ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOption(String option) {
+    final isSelected = selectedOption == option;
+    final isCorrect = option == widget.exercise.answer;
+    final showCorrect = _answered && isCorrect;
+    final showWrong = _answered && isSelected && !isCorrect;
+
+    final List<Color> colors = showCorrect
+        ? [Colors.green.shade400, Colors.green.shade600]
+        : showWrong
+        ? [Colors.red.shade400, Colors.red.shade600]
+        : [
+            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.05),
+          ];
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        onTap: _answered ? null : () => _checkAnswer(option),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: colors),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.15),
+              width: 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                showCorrect
+                    ? Icons.check_circle_rounded
+                    : showWrong
+                    ? Icons.cancel_rounded
+                    : Icons.hearing_rounded,
+                color: Colors.white.withValues(alpha: 0.9),
+                size: 26,
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: ArabicText(
+                  option,
+                  style: ArabicTextStyle.smartStyle(
+                    option,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
           ),
         ),
       ),

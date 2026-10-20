@@ -22,12 +22,13 @@ class TranslationHelper {
     dynamic field,
     String key,
   ) {
-    // Supporter uniquement les Maps de traduction pour de meilleures performances
-    if (field is! Map<String, dynamic>) {
-      return 'Translation not available';
+    // Texte simple (non traduit) : affiché tel quel
+    if (field is String) return field;
+    if (field is! Map) {
+      return AppLocalizations.of(context)!.translationNotAvailable;
     }
 
-    final fieldMap = field;
+    final fieldMap = Map<String, dynamic>.from(field);
     final localizations = AppLocalizations.of(context)!;
     // Extraire le code de langue depuis localeName (peut être 'en' ou 'en_US')
     final locale = localizations.localeName;
@@ -59,7 +60,7 @@ class TranslationHelper {
     }
 
     // Aucune traduction disponible
-    return 'Translation not available';
+    return localizations.translationNotAvailable;
   }
 
   /// Récupérer un tableau de traductions depuis Firestore
@@ -76,12 +77,10 @@ class TranslationHelper {
   /// );
   /// ```
   static List<String> getTranslationList(BuildContext context, dynamic field) {
-    // Supporter uniquement les Maps de traduction pour de meilleures performances
-    if (field is! Map<String, dynamic>) {
-      return [];
-    }
+    if (field is List) return field.map((e) => e.toString()).toList();
+    if (field is! Map) return [];
 
-    final fieldMap = field;
+    final fieldMap = Map<String, dynamic>.from(field);
     final localizations = AppLocalizations.of(context)!;
 
     // Extraire le code de langue depuis localeName

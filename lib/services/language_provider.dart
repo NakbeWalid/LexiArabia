@@ -1,10 +1,12 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LanguageProvider extends ChangeNotifier {
   static const String _languageKey = 'selected_language';
 
-  Locale _currentLocale = const Locale('en');
+  Locale _currentLocale = Locale(_deviceLanguageCode());
 
   Locale get currentLocale => _currentLocale;
 
@@ -18,11 +20,19 @@ class LanguageProvider extends ChangeNotifier {
     _loadSavedLanguage();
   }
 
+  /// Langue de l'appareil si elle est supportée, sinon le français
+  /// (langue du livre de référence)
+  static String _deviceLanguageCode() {
+    final code = PlatformDispatcher.instance.locale.languageCode;
+    return supportedLocales.containsKey(code) ? code : 'fr';
+  }
+
   Future<void> _loadSavedLanguage() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final languageCode = prefs.getString(_languageKey) ?? 'en';
-      _currentLocale = supportedLocales[languageCode] ?? const Locale('en');
+      final languageCode =
+          prefs.getString(_languageKey) ?? _deviceLanguageCode();
+      _currentLocale = supportedLocales[languageCode] ?? const Locale('fr');
       print('🌍 Langue chargée: ${_currentLocale.languageCode}');
       notifyListeners();
     } catch (e) {

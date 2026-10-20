@@ -1,470 +1,133 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
-import 'package:dualingocoran/services/sound_service.dart';
+import 'package:dualingocoran/exercises/exercise_view.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../utils/arabic_text_style.dart';
+import '../widgets/smart_question_card.dart';
 
+/// Phrase à trou : l'utilisateur glisse (ou touche) le mot manquant
 class DragDropExercise extends StatefulWidget {
   final Exercise exercise;
-  final Function(bool) onNext;
+  final AnswerCallback onAnswered;
 
   const DragDropExercise({
     super.key,
     required this.exercise,
-    required this.onNext,
+    required this.onAnswered,
   });
 
   @override
   State<DragDropExercise> createState() => _DragDropExerciseState();
 }
 
-class _DragDropExerciseState extends State<DragDropExercise>
-    with TickerProviderStateMixin {
-  List<String?> sentenceSlots = [];
-  List<String> availableWords = [];
-  final AudioPlayer _audioPlayer = AudioPlayer();
-  late AnimationController _controller;
-  late AnimationController _pulseController;
+class _DragDropExerciseState extends State<DragDropExercise> {
+  late final List<String> availableWords = List<String>.from(
+    widget.exercise.options ?? const [],
+  )..shuffle();
+  String? _placedWord;
+  bool? _isCorrect;
 
-  String targetSentence = "";
-  List<String> correctWords = [];
+  bool get _answered => _isCorrect != null;
 
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    _initializeExercise();
-    _controller.forward();
-  }
-
-  void _initializeExercise() {
-    // Debug
-    print('Exercise type: ${widget.exercise.type}');
-    print('Exercise question: ${widget.exercise.question}');
-    print('Exercise answer: ${widget.exercise.answer}');
-    print('Exercise options: ${widget.exercise.options}');
-    print('Exercise dragDropPairs: ${widget.exercise.dragDropPairs}');
-
-    // Pour les exercices drag_drop avec une phrase à compléter
-    if (widget.exercise.options != null &&
-        widget.exercise.options!.isNotEmpty) {
-      availableWords = List.from(widget.exercise.options!);
-      availableWords.shuffle();
-
-      // Si on a une phrase avec des trous (champ sentence)
-      if (widget.exercise.question.contains('____') ||
-          (widget.exercise.question.contains('Fill in the blank') &&
-              widget.exercise.question.contains('هذا'))) {
-        // Extraire la phrase arabe de la question
-        String arabicSentence = widget.exercise.question.split('(')[0].trim();
-        if (arabicSentence.contains('هذا')) {
-          arabicSentence = arabicSentence
-              .substring(arabicSentence.indexOf('هذا'))
-              .trim();
-        }
-
-        // Remplacer ____ par le mot correct
-        targetSentence = arabicSentence.replaceAll(
-          '____',
-          widget.exercise.answer ?? '',
-        );
-
-        // Pour les exercices drag & drop, on crée seulement UN slot pour le mot manquant
-        sentenceSlots = [null]; // Un seul slot vide
-        correctWords = [widget.exercise.answer ?? '']; // Le mot correct
-
-        print("🔍 Drag & Drop initialized:");
-        print("🔍 sentenceSlots: $sentenceSlots");
-        print("🔍 correctWords: $correctWords");
-      }
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant DragDropExercise oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.exercise != widget.exercise) {
-      _initializeExercise();
-      setState(() {});
-      _controller.reset();
-      if (mounted) _pulseController.reset();
-      _controller.forward();
-    }
-  }
-
-  void handleWordDrop(int index, String word) async {
-    print("JE RENTRE ICI BOGOSSSS");
+  void _placeWord(String word) {
+    if (_answered) return;
+    final isCorrect = word.trim() == widget.exercise.answer?.trim();
     setState(() {
-      // Pour les exercices avec un seul mot à placer
-      if (sentenceSlots.length == 1) {
-        sentenceSlots[0] = word;
-      } else {
-        // Remove word from other slots if it exists
-        for (int i = 0; i < sentenceSlots.length; i++) {
-          if (sentenceSlots[i] == word) {
-            sentenceSlots[i] = null;
-          }
-        }
-        sentenceSlots[index] = word;
-      }
+      _placedWord = word;
+      _isCorrect = isCorrect;
     });
-
-    // Check if sentence is complete
-    print("🔍 Checking completion:");
-    print("🔍 sentenceSlots: $sentenceSlots");
-    print("🔍 Contains null: ${sentenceSlots.contains(null)}");
-    print("🔍 All filled: ${!sentenceSlots.contains(null)}");
-
-    if (!sentenceSlots.contains(null)) {
-      bool isCorrect = true;
-
-      // Pour les exercices avec un seul mot
-      if (sentenceSlots.length == 1) {
-        isCorrect = sentenceSlots[0] == widget.exercise.answer;
-        print(
-          '🔍 Single word check: "${sentenceSlots[0]}" == "${widget.exercise.answer}" = $isCorrect',
-        );
-      } else {
-        // Pour les exercices avec plusieurs mots
-        for (int i = 0; i < sentenceSlots.length; i++) {
-          if (sentenceSlots[i] != correctWords[i]) {
-            isCorrect = false;
-            break;
-          }
-        }
-        print('🔍 Multi-word check: $isCorrect');
-        print('🔍 Sentence slots: $sentenceSlots');
-        print('🔍 Correct words: $correctWords');
-      }
-
-      if (isCorrect) {
-        // ✅ RÉPONSE CORRECTE
-        print(
-          '🎉 Exercise completed successfully! Calling onNext in 2 seconds...',
-        );
-        HapticFeedback.lightImpact();
-        final soundEnabled = await SoundService.isSoundEnabled();
-        if (soundEnabled) {
-          try {
-            await _audioPlayer.play(AssetSource('sounds/success.mp3'));
-          } catch (e) {
-            print('Audio error: $e');
-          }
-        }
-        if (mounted) _pulseController.forward();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.celebration, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  "Perfect! Sentence completed! ✨",
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.green.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-
-        Future.delayed(const Duration(milliseconds: 800), () {
-          print('🚀 Calling widget.onNext now!');
-          widget.onNext(true); // Réponse correcte
-        });
-      } else {
-        // ❌ RÉPONSE INCORRECTE - Permettre de réessayer
-        print('⚠️ Wrong answer! Allowing retry...');
-        HapticFeedback.mediumImpact();
-        final soundEnabled = await SoundService.isSoundEnabled();
-        if (soundEnabled) {
-          try {
-            await _audioPlayer.play(AssetSource('sounds/wrong.mp3'));
-          } catch (e) {
-            print('Audio error: $e');
-          }
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  "Oops, try again! 💪",
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-            backgroundColor: Colors.red.shade600,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-
-        // Réinitialiser après un délai pour permettre de réessayer
-        Future.delayed(const Duration(milliseconds: 1000), () {
-          if (mounted) {
-            setState(() {
-              // Réinitialiser les slots pour permettre de réessayer
-              sentenceSlots = List.filled(sentenceSlots.length, null);
-              // Réinitialiser les mots disponibles
-              availableWords = List.from(widget.exercise.options ?? []);
-              availableWords.shuffle();
-            });
-          }
-        });
-      }
-    }
-  }
-
-  void reset() {
-    setState(() {
-      _initializeExercise();
-    });
-    _controller.reset();
-    if (mounted) _pulseController.reset();
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _pulseController.dispose();
-    _audioPlayer.dispose();
-    super.dispose();
+    widget.onAnswered(isCorrect);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (widget.exercise.answer == null || widget.exercise.answer!.isEmpty) {
-      return Scaffold(
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, size: 64, color: Colors.white70),
-                SizedBox(height: 16),
-                Text(
-                  "No valid exercise data available",
-                  style: GoogleFonts.poppins(fontSize: 18, color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-        ),
+    final l10n = AppLocalizations.of(context)!;
+
+    if (widget.exercise.answer == null ||
+        widget.exercise.answer!.isEmpty ||
+        availableWords.isEmpty) {
+      return ExerciseMessage(
+        icon: Icons.error_outline,
+        messageBuilder: (l10n) => l10n.invalidExerciseData,
       );
     }
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f3460)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return Container(
+      decoration: const BoxDecoration(gradient: kExerciseBackground),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            kExerciseTopSpace,
+            16,
+            kExerciseBottomSpace,
           ),
-        ),
-        child: SafeArea(
           child: Column(
             children: [
-              // Header
-              Container(
-                padding: EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-                    ),
-                    Expanded(
-                      child: Text(
-                        "Complete the Sentence",
-                        style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: reset,
-                      icon: Icon(Icons.refresh, color: Colors.white),
-                    ),
-                  ],
+              SmartQuestionCard(
+                    question: widget.exercise.getTranslatedQuestion(context),
+                    margin: EdgeInsets.zero,
+                  )
+                  .animate()
+                  .fadeIn(delay: 200.ms)
+                  .scale(begin: const Offset(0.96, 0.96)),
+              const SizedBox(height: 25),
+              Text(
+                l10n.completeTheSentence,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.85),
                 ),
-              ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.2),
-
-              // Question
+              ),
+              const SizedBox(height: 16),
               Container(
-                margin: EdgeInsets.symmetric(horizontal: 20),
-                padding: EdgeInsets.all(20),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 20,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
-                ),
-                child: ArabicText(
-                  widget.exercise.question,
-                  style: ArabicTextStyle.smartStyle(
-                    widget.exercise.question,
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    width: 1.5,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-              ).animate().fadeIn(delay: 300.ms).scale(),
-
-              SizedBox(height: 40),
-
-              // Progress indicator
-              Container(
-                margin: EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
+                child: _buildSentenceWithBlank(),
+              ).animate().fadeIn(delay: 400.ms),
+              const SizedBox(height: 32),
+              Text(
+                l10n.dragTheCorrectWord,
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+              ),
+              const SizedBox(height: 18),
+              AnimationLimiter(
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 14,
+                  alignment: WrapAlignment.center,
                   children: [
-                    Text(
-                      "Progress: ${sentenceSlots.where((slot) => slot != null).length}/${sentenceSlots.length}",
-                      style: GoogleFonts.poppins(
-                        color: Colors.white.withOpacity(0.8),
-                        fontWeight: FontWeight.w600,
+                    for (int i = 0; i < availableWords.length; i++)
+                      AnimationConfiguration.staggeredList(
+                        position: i,
+                        duration: const Duration(milliseconds: 500),
+                        child: ScaleAnimation(
+                          child: FadeInAnimation(
+                            child: _buildWordChoice(availableWords[i]),
+                          ),
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 8),
-                    LinearProgressIndicator(
-                      value:
-                          sentenceSlots.where((slot) => slot != null).length /
-                          sentenceSlots.length,
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.blue.shade400,
-                      ),
-                      minHeight: 6,
-                    ),
                   ],
-                ),
-              ).animate().fadeIn(delay: 600.ms).scaleX(),
-
-              SizedBox(height: 40),
-
-              // Sentence with blank
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      Text(
-                        "Complete the sentence:",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-
-                      // Sentence with drag target
-                      Container(
-                        margin: EdgeInsets.symmetric(horizontal: 20),
-                        padding: EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                          ),
-                        ),
-                        child: _buildSentenceWithBlank(),
-                      ).animate().fadeIn(delay: 800.ms),
-
-                      SizedBox(height: 30),
-
-                      Text(
-                        "Drag the correct word:",
-                        style: GoogleFonts.poppins(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                      SizedBox(height: 20),
-
-                      // Available words
-                      Container(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.3,
-                        ),
-                        child: AnimationLimiter(
-                          child: Wrap(
-                            spacing: 12,
-                            runSpacing: 12,
-                            alignment: WrapAlignment.center,
-                            children: availableWords.asMap().entries.map((
-                              entry,
-                            ) {
-                              final index = entry.key;
-                              final word = entry.value;
-                              final isUsed = sentenceSlots.contains(word);
-
-                              return AnimationConfiguration.staggeredList(
-                                position: index,
-                                duration: const Duration(milliseconds: 600),
-                                child: ScaleAnimation(
-                                  child: FadeInAnimation(
-                                    child: Draggable<String>(
-                                      data: word,
-                                      feedback: Material(
-                                        color: Colors.transparent,
-                                        child: _wordBox(word, isFeedback: true),
-                                      ),
-                                      childWhenDragging: Opacity(
-                                        opacity: 0.3,
-                                        child: _wordBox(word),
-                                      ),
-                                      child: Opacity(
-                                        opacity: isUsed ? 0.5 : 1.0,
-                                        child: _wordBox(word),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 20),
-                    ],
-                  ),
                 ),
               ),
             ],
@@ -474,157 +137,234 @@ class _DragDropExerciseState extends State<DragDropExercise>
     );
   }
 
+  Widget _buildWordChoice(String word) {
+    final isUsed = _placedWord == word;
+    final box = Opacity(opacity: isUsed ? 0.35 : 1.0, child: _wordBox(word));
+
+    if (_answered) return box;
+
+    return Semantics(
+      button: true,
+      child: GestureDetector(
+        onTap: () => _placeWord(word),
+        child: Draggable<String>(
+          data: word,
+          feedback: Material(
+            color: Colors.transparent,
+            child: _wordBox(word, isFeedback: true),
+          ),
+          childWhenDragging: Opacity(opacity: 0.25, child: _wordBox(word)),
+          child: box,
+        ),
+      ),
+    );
+  }
+
   Widget _buildSentenceWithBlank() {
-    // Extraire seulement la phrase arabe de la question
-    String arabicSentence = widget.exercise.question;
+    final arabicWords = _extractOrderedArabicWords();
 
-    // Supprimer la partie anglaise entre parenthèses
-    if (arabicSentence.contains('(')) {
-      arabicSentence = arabicSentence.split('(')[0].trim();
-    }
-
-    // Supprimer les instructions en anglais au début
-    if (arabicSentence.contains(':')) {
-      arabicSentence = arabicSentence.split(':')[1].trim();
-    }
-
-    // Supprimer "Complete the sentence" ou "Fill in the blank"
-    arabicSentence = arabicSentence
-        .replaceAll('Complete the sentence', '')
-        .trim();
-    arabicSentence = arabicSentence.replaceAll('Fill in the blank', '').trim();
-
-    // Nettoyer les espaces multiples
-    arabicSentence = arabicSentence.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-    print('🔍 Cleaned Arabic sentence: "$arabicSentence"');
-
-    // Diviser la phrase en mots et filtrer les mots anglais
-    List<String> words = arabicSentence.split(' ');
-
-    // Filtrer les mots anglais (garder seulement les mots arabes et ____)
-    List<String> arabicWords = words.where((word) {
-      // Garder les mots qui contiennent des caractères arabes ou ____
-      return word.contains(RegExp(r'[\u0600-\u06FF]')) || word == '____';
-    }).toList();
-
-    // Inverser l'ordre pour l'affichage de droite à gauche (RTL)
-    arabicWords = arabicWords.reversed.toList();
-
-    print('🔍 Filtered Arabic words: $arabicWords');
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
-      children: arabicWords.map((word) {
-        // Si c'est le mot manquant (____)
-        if (word == '____') {
-          return DragTarget<String>(
-            builder: (context, candidateData, rejectedData) {
-              return AnimatedContainer(
-                duration: Duration(milliseconds: 300),
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                margin: EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: candidateData.isNotEmpty
-                        ? [Colors.yellow.shade400, Colors.orange.shade500]
-                        : sentenceSlots.isNotEmpty && sentenceSlots[0] != null
-                        ? [Colors.green.shade400, Colors.green.shade600]
-                        : [
-                            Colors.white.withOpacity(0.1),
-                            Colors.white.withOpacity(0.05),
-                          ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: candidateData.isNotEmpty
-                        ? Colors.yellow.shade300
-                        : sentenceSlots.isNotEmpty && sentenceSlots[0] != null
-                        ? Colors.green.shade300
-                        : Colors.white.withOpacity(0.3),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  sentenceSlots.isNotEmpty && sentenceSlots[0] != null
-                      ? sentenceSlots[0]!
-                      : "____",
-                  style: ArabicTextStyle.smartStyle(
-                    sentenceSlots.isNotEmpty && sentenceSlots[0] != null
-                        ? sentenceSlots[0]!
-                        : "____",
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: sentenceSlots.isNotEmpty && sentenceSlots[0] != null
-                        ? Colors.white
-                        : Colors.white.withOpacity(0.5),
-                  ),
-                ),
-              );
-            },
-            onAcceptWithDetails: (details) => handleWordDrop(0, details.data),
-            onWillAcceptWithDetails: (_) => true,
-          );
-        } else {
-          // Mot normal de la phrase arabe
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 10,
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: arabicWords.map((word) {
+          if (word.contains('____')) {
+            return DragTarget<String>(
+              onWillAcceptWithDetails: (_) => !_answered,
+              onAcceptWithDetails: (details) => _placeWord(details.data),
+              builder: (context, candidateData, rejectedData) =>
+                  _buildBlank(candidateData.isNotEmpty),
+            );
+          }
           return Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            margin: EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withOpacity(0.2)),
+              color: Colors.white.withValues(alpha: 0.09),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
             ),
-            child: ArabicText(
+            child: Text(
               word,
-              style: ArabicTextStyle.smartStyle(
-                word,
-                fontSize: 18,
+              textDirection: TextDirection.rtl,
+              style: ArabicTextStyle.arabicText(
+                fontSize: 22,
                 fontWeight: FontWeight.w600,
-                color: Colors.white.withOpacity(0.9),
+                color: Colors.white.withValues(alpha: 0.95),
+                height: 1.4,
               ),
             ),
           );
-        }
-      }).toList(),
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildBlank(bool isHovered) {
+    final hasValue = _placedWord != null;
+    final List<Color> colors = isHovered
+        ? [Colors.amber.shade400, Colors.orange.shade500]
+        : _isCorrect == true
+        ? [Colors.green.shade400, Colors.green.shade600]
+        : _isCorrect == false
+        ? [Colors.red.shade400, Colors.red.shade600]
+        : [
+            Colors.white.withValues(alpha: 0.12),
+            Colors.white.withValues(alpha: 0.06),
+          ];
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      constraints: const BoxConstraints(minWidth: 80, minHeight: 46),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: colors),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isHovered
+              ? Colors.amber.shade300
+              : Colors.white.withValues(alpha: 0.4),
+          width: 1.5,
+        ),
+      ),
+      child: Text(
+        hasValue ? _placedWord! : '····',
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.rtl,
+        style: ArabicTextStyle.arabicText(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: hasValue ? Colors.white : Colors.white.withValues(alpha: 0.5),
+          height: 1.4,
+        ),
+      ),
     );
   }
 
   Widget _wordBox(String word, {bool isFeedback = false}) {
+    final isArabic = ArabicTextStyle.isArabicText(word);
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isFeedback
               ? [Colors.purple.shade400, Colors.purple.shade600]
-              : [Colors.white.withOpacity(0.9), Colors.white.withOpacity(0.7)],
+              : [
+                  Colors.white.withValues(alpha: 0.95),
+                  Colors.white.withValues(alpha: 0.85),
+                ],
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 8,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Text(
         word,
-        style: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: isFeedback ? Colors.white : Colors.grey.shade800,
-        ),
+        textDirection: isArabic ? TextDirection.rtl : TextDirection.ltr,
+        style: isArabic
+            ? ArabicTextStyle.arabicText(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isFeedback ? Colors.white : Colors.grey.shade900,
+                height: 1.4,
+              )
+            : GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isFeedback ? Colors.white : Colors.grey.shade800,
+              ),
       ),
     );
+  }
+
+  List<String> _extractOrderedArabicWords() {
+    // Format explicite : "sentence": "أَنْتُمَا ___"
+    final sentence = widget.exercise.rawData?['sentence'];
+    if (sentence is String && sentence.trim().isNotEmpty) {
+      final words = sentence
+          .replaceAll(RegExp(r'_{2,}'), '____')
+          .split(RegExp(r'\s+'))
+          .where((w) => w.isNotEmpty)
+          .toList();
+      return words.contains('____') ? words : [...words, '____'];
+    }
+
+    String raw = widget.exercise.question;
+
+    String? translation;
+    final parenMatch = RegExp(r'\(([^)]+)\)$').firstMatch(raw.trim());
+    if (parenMatch != null) {
+      translation = parenMatch.group(1)?.trim();
+      raw = raw.substring(0, parenMatch.start).trim();
+    }
+
+    if (raw.contains(':')) {
+      raw = raw.split(':')[1].trim();
+    }
+
+    raw = raw
+        .replaceAll('Complete the sentence', '')
+        .replaceAll(
+          'Complete the blank for the distant in the beginning of Surah Al-Baqarah',
+          '',
+        )
+        .replaceAll('Complete the phrase', '')
+        .replaceAll('Fill in the blank', '')
+        .replaceAll('Complétez la phrase', '')
+        .trim();
+
+    raw = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+    raw = raw.replaceAll(RegExp(r'_{2,}'), '____');
+
+    List<String> rawWords = raw.split(' ');
+    List<String> arabicOnlyWords = rawWords.where((word) {
+      return word.contains(RegExp(r'[\u0600-\u06FF]'));
+    }).toList();
+
+    // Déterminer si le trou '____' doit être au début (premier token RTL) ou à la fin
+    // Si la traduction commence par un trou (ex: "____ is a distant mountain", "____ is my house"),
+    // le trou doit être le PREMIER token (placé à droite en RTL).
+    bool blankAtBeginning = false;
+    if (translation != null &&
+        translation.trim().startsWith(
+          RegExp(r'_{2,}|\.{2,}|\-+|\((\s*_{2,}\s*)\)'),
+        )) {
+      blankAtBeginning = true;
+    } else if (raw.trim().startsWith(RegExp(r'_{2,}|\.{2,}|\-+'))) {
+      blankAtBeginning = true;
+    } else if (rawWords.isNotEmpty && rawWords.first.contains('____')) {
+      blankAtBeginning = true;
+    }
+
+    List<String> orderedWords;
+    if (blankAtBeginning) {
+      orderedWords = ['____', ...arabicOnlyWords];
+    } else {
+      if (raw.contains('____')) {
+        orderedWords = rawWords
+            .where(
+              (w) =>
+                  w.contains(RegExp(r'[\u0600-\u06FF]')) || w.contains('____'),
+            )
+            .toList();
+      } else {
+        orderedWords = [...arabicOnlyWords, '____'];
+      }
+    }
+
+    if (orderedWords.isEmpty) {
+      orderedWords = ['____'];
+    }
+
+    return orderedWords;
   }
 }

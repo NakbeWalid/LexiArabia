@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -14,50 +15,50 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<OnboardingPage> _pages = [
-    OnboardingPage(
-      title: 'Bienvenue sur DualingOcoran',
-      subtitle: 'Votre mission',
-      description:
-          'Apprenez l\'arabe en maîtrisant les mots les plus fréquents du Coran. Notre objectif : vous permettre de comprendre 80% du texte sacré.',
-      icon: Icons.auto_stories,
-      features: [
-        'Maîtrisez les mots essentiels du Coran',
-        'Apprenez à votre rythme avec des leçons progressives',
-        'Suivez votre progression en temps réel',
-        'Gagnez des récompenses en complétant les défis',
-      ],
-      color: Color(0xFF4CAF50),
-    ),
-    OnboardingPage(
-      title: 'Comment ça marche ?',
-      subtitle: 'Apprendre 80% des mots du Coran',
-      description:
-          'En apprenant seulement les 200 mots les plus fréquents du Coran, vous pourrez comprendre environ 80% du texte. C\'est notre méthode éprouvée.',
-      icon: Icons.school,
-      features: [
-        '200 mots = 80% de compréhension',
-        'Leçons structurées par thème',
-        'Exercices interactifs variés',
-        'Répétition espacée pour une mémorisation durable',
-      ],
-      color: Color(0xFF2196F3),
-    ),
-    OnboardingPage(
-      title: 'Progression et Récompenses',
-      subtitle: 'Restez motivé',
-      description:
-          'Suivez votre avancement, débloquez des badges et célébrez chaque étape de votre apprentissage. Chaque leçon complétée vous rapproche de votre objectif.',
-      icon: Icons.emoji_events,
-      features: [
-        'Suivi détaillé de votre progression',
-        'Badges et récompenses à débloquer',
-        'Statistiques de vos performances',
-        'Défis quotidiens pour maintenir votre rythme',
-      ],
-      color: Color(0xFFD4AF37),
-    ),
-  ];
+  List<OnboardingPage> get _pages {
+    final l10n = AppLocalizations.of(context)!;
+    return [
+      OnboardingPage(
+        title: l10n.onboarding1Title,
+        subtitle: l10n.onboarding1Subtitle,
+        description: l10n.onboarding1Description,
+        icon: Icons.auto_stories,
+        features: [
+          l10n.onboarding1Feature1,
+          l10n.onboarding1Feature2,
+          l10n.onboarding1Feature3,
+          l10n.onboarding1Feature4,
+        ],
+        color: Color(0xFF4CAF50),
+      ),
+      OnboardingPage(
+        title: l10n.onboarding2Title,
+        subtitle: l10n.onboarding2Subtitle,
+        description: l10n.onboarding2Description,
+        icon: Icons.school,
+        features: [
+          l10n.onboarding2Feature1,
+          l10n.onboarding2Feature2,
+          l10n.onboarding2Feature3,
+          l10n.onboarding2Feature4,
+        ],
+        color: Color(0xFF2196F3),
+      ),
+      OnboardingPage(
+        title: l10n.onboarding3Title,
+        subtitle: l10n.onboarding3Subtitle,
+        description: l10n.onboarding3Description,
+        icon: Icons.emoji_events,
+        features: [
+          l10n.onboarding3Feature1,
+          l10n.onboarding3Feature2,
+          l10n.onboarding3Feature3,
+          l10n.onboarding3Feature4,
+        ],
+        color: Color(0xFFD4AF37),
+      ),
+    ];
+  }
 
   @override
   void dispose() {
@@ -139,7 +140,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     TextButton(
                       onPressed: _skipOnboarding,
                       child: Text(
-                        'Passer',
+                        AppLocalizations.of(context)!.skip,
                         style: GoogleFonts.poppins(
                           color: Colors.white.withOpacity(0.7),
                           fontSize: 14,
@@ -184,7 +185,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         },
                         icon: Icon(Icons.arrow_back, color: Colors.white70),
                         label: Text(
-                          'Précédent',
+                          AppLocalizations.of(context)!.previous,
                           style: GoogleFonts.poppins(
                             color: Colors.white70,
                             fontSize: 16,
@@ -215,8 +216,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         children: [
                           Text(
                             _currentPage == _pages.length - 1
-                                ? 'Commencer'
-                                : 'Suivant',
+                                ? AppLocalizations.of(context)!.start
+                                : AppLocalizations.of(context)!.next,
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -267,7 +268,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: Icon(page.icon, size: 50, color: page.color),
                 )
                 .animate()
-                .scale(delay: 200.ms, duration: 600.ms, curve: Curves.elasticOut)
+                .scale(
+                  delay: 200.ms,
+                  duration: 600.ms,
+                  curve: Curves.elasticOut,
+                )
                 .fadeIn(delay: 100.ms),
 
             SizedBox(height: 30),
@@ -325,48 +330,49 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               final feature = entry.value;
               return Padding(
                 padding: EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.only(top: 4, right: 12),
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        color: page.color.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: page.color, width: 2),
-                      ),
-                      child: Icon(
-                        Icons.check,
-                        size: 12,
-                        color: page.color,
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        feature,
-                        style: GoogleFonts.poppins(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.85),
-                          height: 1.4,
+                child:
+                    Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: EdgeInsets.only(top: 4, right: 12),
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: page.color.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: page.color, width: 2),
+                              ),
+                              child: Icon(
+                                Icons.check,
+                                size: 12,
+                                color: page.color,
+                              ),
+                            ),
+                            Expanded(
+                              child: Text(
+                                feature,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  color: Colors.white.withOpacity(0.85),
+                                  height: 1.4,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        )
+                        .animate()
+                        .fadeIn(delay: (600 + featureIndex * 100).ms)
+                        .slideX(
+                          begin: -0.2,
+                          end: 0,
+                          delay: (600 + featureIndex * 100).ms,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                )
-                    .animate()
-                    .fadeIn(delay: (600 + featureIndex * 100).ms)
-                    .slideX(
-                      begin: -0.2,
-                      end: 0,
-                      delay: (600 + featureIndex * 100).ms,
-                    ),
               );
             }).toList(),
-            
+
             SizedBox(height: 20),
           ],
         ),

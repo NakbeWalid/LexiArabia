@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:dualingocoran/services/language_provider.dart';
-import 'package:dualingocoran/services/theme_provider.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:dualingocoran/services/auth_service.dart';
+import 'package:dualingocoran/services/language_provider.dart';
+import 'package:dualingocoran/services/notification_service.dart';
+import 'package:dualingocoran/services/sound_service.dart';
 import 'package:dualingocoran/services/user_provider.dart';
+
+const _gold = Color(0xFFD4AF37);
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,340 +19,323 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
+  bool _reminderEnabled = false;
+  TimeOfDay _reminderTime = NotificationService.defaultTime;
+  bool _soundEnabled = true;
+  String? _lastLocale;
 
-  String _signOutLabel(LanguageProvider languageProvider) {
-    final code = languageProvider.getCurrentLanguageCode();
-    if (code == 'fr') return 'Se déconnecter';
-    if (code == 'ar') return 'تسجيل الخروج';
-    return 'Sign out';
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
   }
 
-  String _accountLabel(LanguageProvider languageProvider) {
-    final code = languageProvider.getCurrentLanguageCode();
-    if (code == 'fr') return 'Compte';
-    if (code == 'ar') return 'الحساب';
-    return 'Account';
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Après un changement de langue, reprogrammer le rappel avec les
+    // textes traduits dans la nouvelle langue
+    final l10n = AppLocalizations.of(context)!;
+    if (_lastLocale != null && _lastLocale != l10n.localeName) {
+      NotificationService.refresh(
+        title: l10n.reminderNotificationTitle,
+        body: l10n.reminderNotificationBody,
+        channelName: l10n.reminderChannelName,
+      );
+    }
+    _lastLocale = l10n.localeName;
+  }
+
+  Future<void> _loadPreferences() async {
+    final enabled = await NotificationService.isEnabled();
+    final time = await NotificationService.getReminderTime();
+    final sound = await SoundService.isSoundEnabled();
+    if (!mounted) return;
+    setState(() {
+      _reminderEnabled = enabled;
+      _reminderTime = time;
+      _soundEnabled = sound;
+    });
+  }
+
+  Future<void> _setReminder(bool enabled, {TimeOfDay? time}) async {
+    final l10n = AppLocalizations.of(context)!;
+    final reminderTime = time ?? _reminderTime;
+
+    if (!enabled) {
+      await NotificationService.disable();
+      if (mounted) setState(() => _reminderEnabled = false);
+      return;
+    }
+
+    final granted = await NotificationService.enable(
+      time: reminderTime,
+      title: l10n.reminderNotificationTitle,
+      body: l10n.reminderNotificationBody,
+      channelName: l10n.reminderChannelName,
+    );
+    if (!mounted) return;
+
+    setState(() {
+      _reminderEnabled = granted;
+      if (granted) _reminderTime = reminderTime;
+    });
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            granted
+                ? l10n.reminderScheduled(reminderTime.format(context))
+                : l10n.notificationPermissionDenied,
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
+  Future<void> _pickReminderTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _reminderTime,
+    );
+    if (picked != null) await _setReminder(true, time: picked);
+  }
+
+  Future<void> _setSound(bool enabled) async {
+    await SoundService.setSoundEnabled(enabled);
+    if (mounted) setState(() => _soundEnabled = enabled);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<LanguageProvider>(
-      builder: (context, languageProvider, child) {
-        final localizations = AppLocalizations.of(context)!;
-        final themeProvider = context.watch<ThemeProvider>();
-        final colorScheme = Theme.of(context).colorScheme;
-        final isDarkMode = themeProvider.isDarkMode;
+    final l10n = AppLocalizations.of(context)!;
+    final languageProvider = context.watch<LanguageProvider>();
+    final notificationsSupported = NotificationService.isSupported;
 
-        final gradientColors = isDarkMode
-            ? const [
-                Color(0xFF0F0C29),
-                Color(0xFF24243e),
-                Color(0xFF302B63),
-                Color(0xFF0F0C29),
-              ]
-            : const [
-                Color(0xFFfef9f3),
-                Color(0xFFeef3ff),
-                Color(0xFFe4ebff),
-                Color(0xFFf3f6ff),
-              ];
-
-        return Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: gradientColors,
-                stops: [0.0, 0.3, 0.7, 1.0],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: SafeArea(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Header
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.arrow_back,
-                            color: colorScheme.onBackground,
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        SizedBox(width: 16),
-                        Text(
-                          localizations.settings,
-                          style: GoogleFonts.poppins(
-                            color: colorScheme.onBackground,
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 40),
-
-                    // Section Langue
-                    _buildSectionHeader(context, localizations.language),
-                    SizedBox(height: 20),
-
-                    // Sélecteur de langue
-                    _buildLanguageSelector(
-                      context,
-                      languageProvider,
-                      localizations,
-                    ),
-
-                    SizedBox(height: 40),
-
-                    _buildSectionHeader(context, localizations.notifications),
-                    SizedBox(height: 20),
-                    _buildSwitchTile(
-                      context,
-                      icon: Icons.notifications_active_outlined,
-                      title: localizations.enableNotifications,
-                      value: _notificationsEnabled,
-                      onChanged: (newValue) {
-                        setState(() => _notificationsEnabled = newValue);
-                      },
-                    ),
-
-                    SizedBox(height: 40),
-
-                    _buildSectionHeader(
-                      context,
-                      _accountLabel(languageProvider),
-                    ),
-                    SizedBox(height: 20),
-                    _buildActionTile(
-                      context,
-                      icon: Icons.logout_rounded,
-                      title: _signOutLabel(languageProvider),
-                      subtitle:
-                          languageProvider.getCurrentLanguageCode() == 'fr'
-                          ? 'Vous pourrez vous reconnecter à tout moment.'
-                          : (languageProvider.getCurrentLanguageCode() == 'ar'
-                                ? 'يمكنك تسجيل الدخول مرة أخرى في أي وقت.'
-                                : 'You can sign back in anytime.'),
-                      color: Colors.redAccent,
-                      isDanger: true,
-                      onTap: () =>
-                          _showSignOutDialog(context, languageProvider),
-                    ),
-
-                    SizedBox(height: 40),
-
-                    // Bouton de sauvegarde,
-                    SizedBox(height: 20), // Espace en bas pour le scroll
-                  ],
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F0C29),
+              Color(0xFF24243e),
+              Color(0xFF302B63),
+              Color(0xFF0F0C29),
+            ],
+            stops: [0.0, 0.3, 0.7, 1.0],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            children: [
+              Text(
+                l10n.settings,
+                style: GoogleFonts.poppins(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
+              const SizedBox(height: 32),
+
+              _buildSectionHeader(l10n.language),
+              _buildLanguageSelector(languageProvider, l10n),
+              const SizedBox(height: 32),
+
+              _buildSectionHeader(l10n.notifications),
+              _buildSwitchTile(
+                icon: Icons.notifications_active_outlined,
+                title: l10n.dailyReminder,
+                subtitle: notificationsSupported
+                    ? l10n.dailyReminderSubtitle
+                    : l10n.notificationsUnsupported,
+                value: _reminderEnabled,
+                onChanged: notificationsSupported ? _setReminder : null,
+              ),
+              if (_reminderEnabled) ...[
+                const SizedBox(height: 12),
+                _buildActionTile(
+                  icon: Icons.schedule_rounded,
+                  title: l10n.reminderTime,
+                  trailing: Text(
+                    _reminderTime.format(context),
+                    style: GoogleFonts.poppins(
+                      color: _gold,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  onTap: _pickReminderTime,
+                ),
+              ],
+              const SizedBox(height: 32),
+
+              _buildSectionHeader(l10n.sound),
+              _buildSwitchTile(
+                icon: Icons.volume_up_outlined,
+                title: l10n.enableSound,
+                value: _soundEnabled,
+                onChanged: _setSound,
+              ),
+              const SizedBox(height: 32),
+
+              _buildSectionHeader(l10n.account),
+              _buildActionTile(
+                icon: Icons.logout_rounded,
+                title: l10n.signOut,
+                subtitle: l10n.signOutSubtitle,
+                isDanger: true,
+                onTap: _showSignOutDialog,
+              ),
+              const SizedBox(height: 20),
+            ],
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Text(
-      title,
-      style: GoogleFonts.poppins(
-        color: colorScheme.onBackground,
-        fontSize: 20,
-        fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 
-  Widget _buildLanguageSelector(
-    BuildContext context,
-    LanguageProvider languageProvider,
-    AppLocalizations localizations,
-  ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = Theme.of(context).colorScheme.onBackground;
-    final subtitleColor = isDark ? Colors.white70 : Colors.black54;
-    final highlightColor = Theme.of(context).colorScheme.primary;
-    final selectedBackground = highlightColor.withOpacity(isDark ? 0.18 : 0.22);
-    final tileBackground = isDark
-        ? Colors.white.withOpacity(0.08)
-        : Colors.white.withOpacity(0.9);
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Text(
+        title,
+        style: GoogleFonts.poppins(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
 
+  BoxDecoration _tileDecoration({bool selected = false}) => BoxDecoration(
+    color: selected
+        ? _gold.withValues(alpha: 0.18)
+        : Colors.white.withValues(alpha: 0.08),
+    borderRadius: BorderRadius.circular(12),
+    border: Border.all(
+      color: selected ? _gold : Colors.white.withValues(alpha: 0.12),
+    ),
+  );
+
+  Widget _buildLanguageSelector(
+    LanguageProvider languageProvider,
+    AppLocalizations l10n,
+  ) {
     final languages = [
-      {'code': 'en', 'name': localizations.english, 'flag': '🇺🇸'},
-      {'code': 'fr', 'name': localizations.french, 'flag': '🇫🇷'},
-      {'code': 'ar', 'name': localizations.arabic, 'flag': '🇸🇦'},
+      ('fr', l10n.french, '🇫🇷'),
+      ('en', l10n.english, '🇬🇧'),
+      ('ar', l10n.arabic, '🇸🇦'),
     ];
 
     return Column(
-      children: languages.map((language) {
-        final isSelected =
-            languageProvider.getCurrentLanguageCode() == language['code'];
-        return Container(
-          margin: EdgeInsets.only(bottom: 12),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => languageProvider.changeLanguage(language['code']!),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isSelected ? selectedBackground : tileBackground,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: isSelected
-                        ? highlightColor
-                        : (isDark
-                              ? Colors.white.withOpacity(0.15)
-                              : Colors.black12),
-                    width: 1,
+      children: [
+        for (final (code, name, flag) in languages)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => languageProvider.changeLanguage(code),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: _tileDecoration(
+                    selected: languageProvider.getCurrentLanguageCode() == code,
                   ),
-                  boxShadow: isDark
-                      ? []
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 12,
-                            offset: Offset(0, 8),
+                  child: Row(
+                    children: [
+                      Text(flag, style: const TextStyle(fontSize: 24)),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: GoogleFonts.poppins(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                           ),
-                        ],
-                ),
-                child: Row(
-                  children: [
-                    Text(language['flag']!, style: TextStyle(fontSize: 24)),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            language['name']!,
-                            style: GoogleFonts.poppins(
-                              color: textColor,
-                              fontSize: 16,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            language['code']!.toUpperCase(),
-                            style: GoogleFonts.poppins(
-                              color: subtitleColor,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
-                    if (isSelected)
-                      Icon(Icons.check_circle, color: highlightColor, size: 24),
-                  ],
+                      if (languageProvider.getCurrentLanguageCode() == code)
+                        const Icon(Icons.check_circle, color: _gold),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        );
-      }).toList(),
+      ],
     );
   }
 
-  Widget _buildSwitchTile(
-    BuildContext context, {
+  Widget _buildIcon(IconData icon, Color color) => Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.16),
+      shape: BoxShape.circle,
+    ),
+    child: Icon(icon, color: color, size: 20),
+  );
+
+  Widget _buildSwitchTile({
+    required IconData icon,
     required String title,
     required bool value,
-    required ValueChanged<bool> onChanged,
-    IconData? icon,
+    required ValueChanged<bool>? onChanged,
+    String? subtitle,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = isDark
-        ? Colors.white.withOpacity(0.08)
-        : Colors.white.withOpacity(0.95);
-    final borderColor = isDark
-        ? Colors.white.withOpacity(0.12)
-        : Colors.black.withOpacity(0.05);
-
     return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: isDark
-            ? []
-            : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
-                ),
-              ],
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: _tileDecoration(),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              if (icon != null) ...[
-                Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withOpacity(isDark ? 0.15 : 0.2),
-                    shape: BoxShape.circle,
+          _buildIcon(icon, _gold),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
                   ),
-                  child: Icon(icon, color: colorScheme.primary, size: 20),
                 ),
-                SizedBox(width: 16),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
               ],
-              Text(
-                title,
-                style: GoogleFonts.poppins(
-                  color: colorScheme.onBackground,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+            ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeColor: colorScheme.primary,
-          ),
+          Switch(value: value, onChanged: onChanged, activeThumbColor: _gold),
         ],
       ),
     );
   }
 
-  Widget _buildActionTile(
-    BuildContext context, {
+  Widget _buildActionTile({
+    required IconData icon,
     required String title,
     required VoidCallback onTap,
     String? subtitle,
-    IconData? icon,
-    Color? color,
+    Widget? trailing,
     bool isDanger = false,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-    final backgroundColor = isDark
-        ? Colors.white.withOpacity(0.08)
-        : Colors.white.withOpacity(0.95);
-    final borderColor = isDark
-        ? Colors.white.withOpacity(0.12)
-        : Colors.black.withOpacity(0.05);
-    final accent = (color ?? colorScheme.primary);
+    final accent = isDanger ? Colors.redAccent : _gold;
 
     return Material(
       color: Colors.transparent,
@@ -360,38 +346,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor, width: 1),
-            boxShadow: isDark
-                ? []
-                : [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 20,
-                      offset: Offset(0, 10),
-                    ),
-                  ],
-          ),
+          padding: const EdgeInsets.all(16),
+          decoration: _tileDecoration(),
           child: Row(
             children: [
-              if (icon != null) ...[
-                Container(
-                  padding: EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: accent.withOpacity(isDark ? 0.16 : 0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isDanger ? Colors.redAccent : accent,
-                    size: 20,
-                  ),
-                ),
-                SizedBox(width: 16),
-              ],
+              _buildIcon(icon, accent),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -399,32 +359,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       title,
                       style: GoogleFonts.poppins(
-                        color: isDanger
-                            ? (isDark ? Colors.redAccent : Colors.red.shade700)
-                            : colorScheme.onBackground,
+                        color: isDanger ? Colors.redAccent : Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     if (subtitle != null) ...[
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         subtitle,
                         style: GoogleFonts.poppins(
-                          color: isDark ? Colors.white70 : Colors.black54,
+                          color: Colors.white70,
                           fontSize: 12,
-                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ],
                   ],
                 ),
               ),
-              SizedBox(width: 12),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: isDark ? Colors.white54 : Colors.black45,
-              ),
+              const SizedBox(width: 12),
+              trailing ??
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Colors.white54,
+                  ),
             ],
           ),
         ),
@@ -432,52 +390,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _showSignOutDialog(
-    BuildContext context,
-    LanguageProvider languageProvider,
-  ) async {
-    final title = _signOutLabel(languageProvider);
-    final code = languageProvider.getCurrentLanguageCode();
-    final content = code == 'fr'
-        ? 'Êtes-vous sûr de vouloir vous déconnecter ?'
-        : (code == 'ar'
-              ? 'هل أنت متأكد أنك تريد تسجيل الخروج؟'
-              : 'Are you sure you want to sign out?');
-
-    final cancelLabel = code == 'fr'
-        ? 'Annuler'
-        : (code == 'ar' ? 'إلغاء' : 'Cancel');
+  Future<void> _showSignOutDialog() async {
+    final l10n = AppLocalizations.of(context)!;
 
     final shouldSignOut = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1A1A2E) : Colors.white,
-          title: Text(
-            title,
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w700),
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        title: Text(
+          l10n.signOut,
+          style: GoogleFonts.poppins(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
           ),
-          content: Text(content, style: GoogleFonts.poppins()),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(cancelLabel, style: GoogleFonts.poppins()),
+        ),
+        content: Text(
+          l10n.signOutConfirm,
+          style: GoogleFonts.poppins(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(l10n.cancel, style: GoogleFonts.poppins()),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
             ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: Text(title, style: GoogleFonts.poppins()),
-            ),
-          ],
-        );
-      },
+            child: Text(l10n.signOut, style: GoogleFonts.poppins()),
+          ),
+        ],
+      ),
     );
 
     if (shouldSignOut == true && mounted) {
@@ -485,7 +430,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await Provider.of<AuthService>(context, listen: false).signOut();
       if (!mounted) return;
       Provider.of<UserProvider>(context, listen: false).logout();
-      if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
     }
   }

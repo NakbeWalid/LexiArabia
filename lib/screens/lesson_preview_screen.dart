@@ -5,6 +5,8 @@ import 'package:dualingocoran/exercises/exercise_page.dart';
 import 'package:dualingocoran/Exercises/Exercise.dart';
 import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:dualingocoran/services/daily_limit_service.dart';
+import 'package:dualingocoran/services/pronunciation_service.dart';
+import 'package:dualingocoran/utils/arabic_text_style.dart';
 
 class LessonPreviewScreen extends StatefulWidget {
   final String lessonTitle;
@@ -49,10 +51,42 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
 
     _fadeController.forward();
     _slideController.forward();
+
+    // Prononcer le premier mot à l'ouverture
+    WidgetsBinding.instance.addPostFrameCallback((_) => _speakCurrentWord());
+  }
+
+  Map<String, dynamic>? get _currentWordData {
+    if (widget.newWords.isEmpty) return null;
+    final word = widget.newWords[currentWordIndex];
+    return word is Map<String, dynamic> ? word : null;
+  }
+
+  Future<void> _speakCurrentWord() async {
+    if (widget.newWords.isEmpty) return;
+    final word = _currentWordData;
+    final played = await PronunciationService.speak(
+      audioUrl: word?['audioUrl']?.toString(),
+      text:
+          word?['word']?.toString() ??
+          widget.newWords[currentWordIndex].toString(),
+    );
+    if (!played && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context)!.audioUnavailable),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+    }
   }
 
   @override
   void dispose() {
+    PronunciationService.stop();
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
@@ -65,6 +99,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
       });
       _slideController.reset();
       _slideController.forward();
+      _speakCurrentWord();
     }
   }
 
@@ -75,6 +110,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
       });
       _slideController.reset();
       _slideController.forward();
+      _speakCurrentWord();
     }
   }
 
@@ -100,7 +136,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Limite quotidienne atteinte',
+                    AppLocalizations.of(context)!.dailyLimitTitle,
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
@@ -114,12 +150,14 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Vous avez complété $completed/$limit leçons aujourd\'hui.',
+                  AppLocalizations.of(
+                    context,
+                  )!.dailyLimitMessage(completed, limit),
                   style: GoogleFonts.poppins(fontSize: 16),
                 ),
                 SizedBox(height: 12),
                 Text(
-                  'Revenez demain pour continuer votre apprentissage !',
+                  AppLocalizations.of(context)!.dailyLimitComeBack,
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: Colors.grey.shade600,
@@ -131,7 +169,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  'Compris',
+                  AppLocalizations.of(context)!.understood,
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.w600,
                     color: Colors.blue.shade600,
@@ -160,10 +198,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
     final result = await Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            ExercisePage(
-          exercises: exercises,
-          lessonId: widget.lessonId,
-        ),
+            ExercisePage(exercises: exercises, lessonId: widget.lessonId),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
             position: animation.drive(
@@ -178,7 +213,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
         transitionDuration: const Duration(milliseconds: 300),
       ),
     );
-    
+
     // Retourner true si la leçon a été complétée
     if (result == true && mounted) {
       Navigator.of(context).pop(true);
@@ -313,7 +348,7 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'New Words to Learn',
+                            localizations.newWordsToLearn,
                             style: GoogleFonts.poppins(
                               color: Colors.white,
                               fontSize: 20,
@@ -345,14 +380,24 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
                                         width: 2,
                                       ),
                                     ),
-                                    child: Text(
-                                      _getCurrentWord(localizations),
-                                      style: GoogleFonts.poppins(
-                                        color: Colors.white,
-                                        fontSize: 36,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      textAlign: TextAlign.center,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Flexible(
+                                          child: ArabicText(
+                                            _getCurrentWord(localizations),
+                                            textAlign: TextAlign.center,
+                                            style: ArabicTextStyle.smartStyle(
+                                              _getCurrentWord(localizations),
+                                              fontSize: 38,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        _buildSpeakButton(localizations),
+                                      ],
                                     ),
                                   )
                                   .animate(controller: _slideController)
@@ -589,139 +634,83 @@ class _LessonPreviewScreenState extends State<LessonPreviewScreen>
     );
   }
 
-  // Méthodes pour gérer la nouvelle structure des mots
+  Widget _buildSpeakButton(AppLocalizations localizations) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: PronunciationService.isPlaying,
+      builder: (context, isPlaying, _) => Semantics(
+        button: true,
+        label: localizations.playAudio,
+        child: Material(
+          color: isPlaying
+              ? const Color(0xFFD4AF37)
+              : Colors.white.withValues(alpha: 0.2),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: _speakCurrentWord,
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Icon(
+                isPlaying ? Icons.graphic_eq_rounded : Icons.volume_up_rounded,
+                color: Colors.white,
+                size: 26,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Méthodes pour gérer la structure des mots (String ou Map de traductions)
   String _getCurrentWord(AppLocalizations localizations) {
+    if (widget.newWords.isEmpty) return localizations.unknownWord;
     final currentWord = widget.newWords[currentWordIndex];
     if (currentWord is Map<String, dynamic>) {
-      return currentWord['word'] ?? localizations.unknownWord;
+      return currentWord['word']?.toString() ?? localizations.unknownWord;
     } else if (currentWord is String) {
       return currentWord;
     }
     return localizations.unknownWord;
   }
 
-  String _getCurrentWordTranslation(AppLocalizations localizations) {
-    final currentWord = widget.newWords[currentWordIndex];
-    if (currentWord is Map<String, dynamic>) {
-      // Translation doit être une Map de traductions uniquement
-      if (currentWord['translation'] != null &&
-          currentWord['translation'] is Map) {
-        final translationMap =
-            currentWord['translation'] as Map<String, dynamic>;
-        final langCode = localizations.localeName
-            .split('_')
-            .first
-            .toLowerCase();
-        return translationMap[langCode]?.toString() ??
-            translationMap['en']?.toString() ??
-            translationMap['fr']?.toString() ??
-            translationMap['ar']?.toString() ??
-            localizations.translationNotAvailable;
-      }
-      return localizations.translationNotAvailable;
+  /// Valeur traduite d'un champ du mot courant (String simple ou Map fr/en/ar)
+  String _localizedField(
+    String key,
+    AppLocalizations localizations,
+    String fallback,
+  ) {
+    final value = _currentWordData?[key];
+    if (value is String && value.isNotEmpty) return value;
+    if (value is Map) {
+      final langCode = localizations.localeName.split('_').first.toLowerCase();
+      return value[langCode]?.toString() ??
+          value['en']?.toString() ??
+          value['fr']?.toString() ??
+          value['ar']?.toString() ??
+          fallback;
     }
-    return localizations.translationNotAvailable;
+    return fallback;
   }
 
-  String _getCurrentWordDescription(AppLocalizations localizations) {
-    final currentWord = widget.newWords[currentWordIndex];
-    if (currentWord is Map<String, dynamic>) {
-      // Description doit être une Map de traductions uniquement
-      if (currentWord['description'] != null &&
-          currentWord['description'] is Map) {
-        final descMap = currentWord['description'] as Map<String, dynamic>;
-        final langCode = localizations.localeName
-            .split('_')
-            .first
-            .toLowerCase();
-        return descMap[langCode]?.toString() ??
-            descMap['en']?.toString() ??
-            descMap['fr']?.toString() ??
-            descMap['ar']?.toString() ??
-            localizations.descriptionNotAvailable;
-      }
-      return localizations.descriptionNotAvailable;
-    }
-    return localizations.descriptionNotAvailable;
-  }
+  String _getCurrentWordTranslation(AppLocalizations localizations) =>
+      _localizedField(
+        'translation',
+        localizations,
+        localizations.translationNotAvailable,
+      );
 
-  String _getCurrentWordExample(AppLocalizations localizations) {
-    final currentWord = widget.newWords[currentWordIndex];
-    if (currentWord is Map<String, dynamic>) {
-      // Example doit être une Map de traductions uniquement
-      if (currentWord['example'] != null && currentWord['example'] is Map) {
-        final exampleMap = currentWord['example'] as Map<String, dynamic>;
-        final langCode = localizations.localeName
-            .split('_')
-            .first
-            .toLowerCase();
-        return exampleMap[langCode]?.toString() ??
-            exampleMap['en']?.toString() ??
-            exampleMap['fr']?.toString() ??
-            exampleMap['ar']?.toString() ??
-            localizations.exampleNotAvailable;
-      }
-      return localizations.exampleNotAvailable;
-    }
-    return localizations.exampleNotAvailable;
-  }
+  String _getCurrentWordDescription(AppLocalizations localizations) =>
+      _localizedField(
+        'description',
+        localizations,
+        localizations.descriptionNotAvailable,
+      );
 
-  String _getWordTranslation(String word, AppLocalizations localizations) {
-    // Dictionnaire des traductions pour les mots de négation
-    final translations = {
-      'لَنْ': 'will not (future negation)',
-      'لَمْ': 'did not (past negation)',
-      'مَا': 'not (past negation)',
-      'لَيْسَ': 'is not (present negation)',
-      'كَلَّا': 'no, never',
-      'لَا': 'no, not',
-      'مِنْ': 'from, of',
-      'إِلَى': 'to, towards',
-      'عَلَى': 'on, upon',
-      'فِي': 'in, at',
-      'مَعَ': 'with',
-      'بَيْنَ': 'between',
-      'قَبْلَ': 'before',
-      'بَعْدَ': 'after',
-      'أَمَامَ': 'in front of',
-      'وَرَاءَ': 'behind',
-      'تَحْتَ': 'under',
-      'فَوْقَ': 'above',
-      'دَاخِلَ': 'inside',
-      'خَارِجَ': 'outside',
-    };
-
-    return translations[word] ?? localizations.newWordsToLearn;
-  }
-
-  String _getWordExample(String word) {
-    // Exemples d'utilisation pour chaque mot
-    final examples = {
-      'لَنْ':
-          'لَنْ أَذْهَبَ إِلَى السُّوقِ غَدًا (I will not go to the market tomorrow)',
-      'لَمْ': 'لَمْ أَقْرَأِ الكِتَابَ (I did not read the book)',
-      'مَا': 'مَا كَتَبَ الرِّسَالَةَ (He did not write the message)',
-      'لَيْسَ': 'لَيْسَ هَذَا بَيْتِي (This is not my house)',
-      'كَلَّا': 'كَلَّا، لَنْ أَفْعَلَ ذَلِكَ (No, I will never do that)',
-      'لَا': 'لَا أَعْرِفُ (I do not know)',
-      'مِنْ': 'أَتَيْتُ مِنَ المَدِيْنَةِ (I came from the city)',
-      'إِلَى': 'أَذْهَبُ إِلَى المَسْجِدِ (I go to the mosque)',
-      'عَلَى': 'الكِتَابُ عَلَى المَكْتَبِ (The book is on the desk)',
-      'فِي': 'أَنَا فِي البَيْتِ (I am in the house)',
-      'مَعَ': 'أَنَا مَعَكَ (I am with you)',
-      'بَيْنَ':
-          'البَيْتُ بَيْنَ المَسْجِدِ وَالمَدْرَسَةِ (The house is between the mosque and the school)',
-      'قَبْلَ': 'أَكَلْتُ قَبْلَ الذَّهَابِ (I ate before leaving)',
-      'بَعْدَ': 'سَأَذْهَبُ بَعْدَ الفَجْرِ (I will go after dawn)',
-      'أَمَامَ': 'أَنَا أَمَامَ البَابِ (I am in front of the door)',
-      'وَرَاءَ': 'الكِتَابُ وَرَاءَ المَكْتَبِ (The book is behind the desk)',
-      'تَحْتَ': 'القِطُّ تَحْتَ الطَّاوِلَةِ (The cat is under the table)',
-      'فَوْقَ': 'الطَّائِرُ فَوْقَ الشَّجَرَةِ (The bird is above the tree)',
-      'دَاخِلَ': 'أَنَا دَاخِلَ البَيْتِ (I am inside the house)',
-      'خَارِجَ':
-          'الأَطْفَالُ خَارِجَ البَيْتِ (The children are outside the house)',
-    };
-
-    return examples[word] ?? '';
-  }
+  String _getCurrentWordExample(AppLocalizations localizations) =>
+      _localizedField(
+        'example',
+        localizations,
+        localizations.exampleNotAvailable,
+      );
 }

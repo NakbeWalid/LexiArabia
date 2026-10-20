@@ -194,7 +194,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                         ),
                         SizedBox(width: 8),
                         Text(
-                          '$currentStreak ${localizations.days}',
+                          localizations.daysCount(currentStreak),
                           style: GoogleFonts.poppins(
                             color: Colors.orange,
                             fontSize: 14,
@@ -300,7 +300,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'SRS Review',
+                          AppLocalizations.of(context)!.srsReviewTitle,
                           style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontSize: 18,
@@ -310,10 +310,12 @@ class _ProgressionScreenState extends State<ProgressionScreen>
                         SizedBox(height: 4),
                         Text(
                           _isLoadingReviews
-                              ? 'Loading...'
+                              ? AppLocalizations.of(context)!.loading
                               : _pendingReviews > 0
-                              ? '$_pendingReviews exercises to review'
-                              : 'No reviews for today',
+                              ? AppLocalizations.of(
+                                  context,
+                                )!.exercisesToReview(_pendingReviews)
+                              : AppLocalizations.of(context)!.noReviewsToday,
                           style: GoogleFonts.poppins(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 14,
@@ -350,7 +352,7 @@ class _ProgressionScreenState extends State<ProgressionScreen>
               Expanded(
                 child: _buildStatCard(
                   AppLocalizations.of(context)!.bestStreak,
-                  '$bestStreak ${AppLocalizations.of(context)!.days}',
+                  AppLocalizations.of(context)!.daysCount(bestStreak),
                   Icons.emoji_events,
                   Colors.amber,
                 ),

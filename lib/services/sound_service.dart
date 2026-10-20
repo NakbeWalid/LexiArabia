@@ -1,9 +1,24 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service pour gérer l'état du son dans l'application
 class SoundService {
   static const String _soundEnabledKey = 'sound_enabled';
   static bool? _cachedValue;
+  static final AudioPlayer _effectsPlayer = AudioPlayer();
+
+  /// Jouer le son de bonne / mauvaise réponse (si le son est activé)
+  static Future<void> playFeedback(bool correct) async {
+    if (!await isSoundEnabled()) return;
+    try {
+      await _effectsPlayer.stop();
+      await _effectsPlayer.play(
+        AssetSource(correct ? 'sounds/success.mp3' : 'sounds/wrong.mp3'),
+      );
+    } catch (e) {
+      print('Audio error: $e');
+    }
+  }
 
   /// Vérifier si le son est activé
   static Future<bool> isSoundEnabled() async {
@@ -13,7 +28,8 @@ class SoundService {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      _cachedValue = prefs.getBool(_soundEnabledKey) ?? true; // Par défaut activé
+      _cachedValue =
+          prefs.getBool(_soundEnabledKey) ?? true; // Par défaut activé
       return _cachedValue!;
     } catch (e) {
       print('❌ Erreur lors de la lecture de l\'état du son: $e');
@@ -44,4 +60,3 @@ class SoundService {
     _cachedValue = null;
   }
 }
-

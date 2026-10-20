@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dualingocoran/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:dualingocoran/services/learning_progress_service.dart';
@@ -160,7 +161,7 @@ class _LearningProgressCelebrationScreenState
 
                     // Titre
                     Text(
-                      'Félicitations !',
+                      AppLocalizations.of(context)!.congratulations,
                       style: GoogleFonts.poppins(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
@@ -179,7 +180,7 @@ class _LearningProgressCelebrationScreenState
 
                     // Sous-titre
                     Text(
-                      'Vous avez progressé !',
+                      AppLocalizations.of(context)!.youProgressed,
                       style: GoogleFonts.poppins(
                         fontSize: 20,
                         color: Colors.white.withOpacity(0.9),
@@ -211,7 +212,7 @@ class _LearningProgressCelebrationScreenState
                         children: [
                           // Label
                           Text(
-                            'Progression d\'apprentissage',
+                            AppLocalizations.of(context)!.learningProgress,
                             style: GoogleFonts.poppins(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
@@ -353,7 +354,7 @@ class _LearningProgressCelebrationScreenState
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               _buildProgressDetail(
-                                'Avant',
+                                AppLocalizations.of(context)!.before,
                                 '${_previousPercentage.toStringAsFixed(1)}%',
                                 Colors.blue.shade300,
                               ),
@@ -363,7 +364,7 @@ class _LearningProgressCelebrationScreenState
                                 color: Colors.white.withOpacity(0.3),
                               ),
                               _buildProgressDetail(
-                                'Ajouté',
+                                AppLocalizations.of(context)!.added,
                                 '+${widget.percentageGained.toStringAsFixed(1)}%',
                                 Colors.green.shade300,
                               ),
@@ -373,7 +374,7 @@ class _LearningProgressCelebrationScreenState
                                 color: Colors.white.withOpacity(0.3),
                               ),
                               _buildProgressDetail(
-                                'Maintenant',
+                                AppLocalizations.of(context)!.now,
                                 '${_newPercentage.toStringAsFixed(1)}%',
                                 Colors.amber.shade300,
                               ),
@@ -428,7 +429,7 @@ class _LearningProgressCelebrationScreenState
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                'Continuer',
+                                AppLocalizations.of(context)!.continueButton,
                                 style: GoogleFonts.poppins(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
